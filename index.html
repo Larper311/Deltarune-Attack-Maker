@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boss Fight Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#14121f;
+    --bg-panel:#1e1b2c;
+    --bg-panel-alt:#262238;
+    --border:#3a3552;
+    --text-primary:#f1eef9;
+    --text-muted:#9993b5;
+    --accent-yellow:#ffd23f;
+    --accent-red:#ff5c5c;
+    --accent-green:#6ee7a0;
+    --accent-violet:#a78bfa;
+    --font-display:'Cinzel', Georgia, 'Times New Roman', serif;
+    --font-body:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg-deep:#14121f; --bg-panel:#1e1b2c; --bg-panel-alt:#262238; --border:#3a3552;
+      --text-primary:#f1eef9; --text-muted:#9993b5;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg-deep:#14121f; --bg-panel:#1e1b2c; --bg-panel-alt:#262238; --border:#3a3552;
+    --text-primary:#f1eef9; --text-muted:#9993b5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-deep);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding:28px 20px 60px;
+  }
+  .wrap{max-width:1280px;margin:0 auto;}
+  header{
+    display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+    flex-wrap:wrap;
+    border-bottom:1px solid var(--border);
+    padding-bottom:18px; margin-bottom:24px;
+  }
+  h1{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:clamp(24px,3.4vw,34px);
+    margin:0;
+    letter-spacing:0.01em;
+    color:var(--text-primary);
+  }
+  h1 span{color:var(--accent-yellow);}
+  .subtitle{color:var(--text-muted); font-size:14px; max-width:520px; line-height:1.5;}
+
+  .layout{
+    display:grid;
+    grid-template-columns: 220px 1fr 380px;
+    gap:18px;
+    align-items:start;
+  }
+  @media (max-width: 980px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px;
+  }
+  .panel h2{
+    font-family:var(--font-display);
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-muted);
+    margin:0 0 12px 0;
+    font-weight:700;
+  }
+
+  /* palette */
+  .palette-btn{
+    display:block; width:100%; text-align:left;
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    padding:10px 12px;
+    border-radius:8px;
+    margin-bottom:8px;
+    cursor:pointer;
+    font-family:var(--font-body);
+    font-size:13.5px;
+    font-weight:600;
+    transition:border-color .15s ease, transform .1s ease;
+  }
+  .palette-btn:hover{border-color:var(--accent-yellow);}
+  .palette-btn:active{transform:scale(0.98);}
+  .palette-btn small{display:block;font-weight:400;color:var(--text-muted);margin-top:2px;font-size:11.5px;}
+  .swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;}
+
+  /* sequence */
+  #sequence{list-style:none;margin:0;padding:0;min-height:60px;}
+  #sequence:empty::after{
+    content:"Add blocks from the left to build your fight.";
+    color:var(--text-muted); font-size:13px; display:block; padding:20px 4px;
+  }
+  .block{
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-left:4px solid var(--accent-violet);
+    border-radius:8px;
+    padding:10px 12px;
+    margin-bottom:8px;
+    cursor:grab;
+  }
+  .block.repeat_start, .block.repeat_end{border-left-color:var(--accent-green);}
+  .block.dragging{opacity:0.4;}
+  .block-row{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .block-title{font-weight:700; font-size:13.5px;}
+  .block-remove{
+    background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;
+    line-height:1; padding:2px 6px;
+  }
+  .block-remove:hover{color:var(--accent-red);}
+  .block-fields{display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;}
+  .field{display:flex; flex-direction:column; gap:3px;}
+  .field label{font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;}
+  .field input{
+    width:72px; background:var(--bg-deep); border:1px solid var(--border); color:var(--text-primary);
+    border-radius:5px; padding:5px 6px; font-size:12.5px; font-family:var(--font-body);
+  }
+  .indent{margin-left:22px;}
+
+  /* fight panel */
+  #stage-wrap{display:flex; flex-direction:column; align-items:center; gap:10px;}
+  canvas#stage{
+    background:#0a0912;
+    border:2px solid var(--border);
+    border-radius:6px;
+    max-width:100%;
+  }
+  .hpbar-wrap{width:100%; max-width:340px;}
+  .hpbar-label{display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:3px;}
+  .hpbar{height:10px; background:var(--bg-panel-alt); border:1px solid var(--border); border-radius:5px; overflow:hidden;}
+  .hpbar-fill{height:100%; background:var(--accent-yellow); transition:width .15s ease;}
+  #status-msg{font-size:13px; color:var(--text-muted); min-height:18px; text-align:center;}
+  #status-msg.win{color:var(--accent-green); font-weight:700;}
+  #status-msg.lose{color:var(--accent-red); font-weight:700;}
+
+  .btn{
+    font-family:var(--font-body); font-weight:700; font-size:13.5px;
+    padding:10px 18px; border-radius:7px; border:1px solid var(--border);
+    cursor:pointer; background:var(--bg-panel-alt); color:var(--text-primary);
+  }
+  .btn.primary{background:var(--accent-yellow); color:#221d10; border-color:var(--accent-yellow);}
+  .btn.primary:hover{filter:brightness(1.07);}
+  .btn:disabled{opacity:0.45; cursor:not-allowed;}
+  .btn-row{display:flex; gap:8px; justify-content:center;}
+
+  .controls-note{font-size:11.5px; color:var(--text-muted); text-align:center; line-height:1.5;}
+  code{background:var(--bg-panel-alt); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:11px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Boss Fight <span>Maker</span></h1>
+      <div class="subtitle">Snap together blocks to script a boss's attack pattern, then test-dodge it yourself. This is an early prototype of the block engine — painting bosses and publishing come next.</div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="panel">
+      <h2>Blocks</h2>
+      <div id="palette"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Sequence</h2>
+      <ul id="sequence"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>Test Fight</h2>
+      <div id="stage-wrap">
+        <canvas id="stage" width="340" height="380"></canvas>
+        <div class="hpbar-wrap">
+          <div class="hpbar-label"><span>SOUL</span><span id="hp-text">100/100</span></div>
+          <div class="hpbar"><div class="hpbar-fill" id="hp-fill" style="width:100%"></div></div>
+        </div>
+        <div id="status-msg"></div>
+        <div class="btn-row">
+          <button class="btn primary" id="play-btn">Test Fight</button>
+          <button class="btn" id="stop-btn" disabled>Stop</button>
+        </div>
+        <div class="controls-note">Move with <code>Arrow keys</code> or <code>WASD</code>. Don't get hit.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Block definitions ----------
+  const BLOCK_DEFS = {
+    wait: {
+      label: "Wait", color: "#a78bfa",
+      desc: "Pause before the next block",
+      fields: [{key:"duration", label:"Seconds", def:1, min:0.2, max:10, step:0.1}],
+    },
+    telegraph: {
+      label: "Telegraph", color: "#ffd23f",
+      desc: "Flash a warning before an attack",
+      fields: [{key:"duration", label:"Seconds", def:0.8, min:0.2, max:5, step:0.1}],
+    },
+    spread: {
+      label: "Spread Shot", color: "#ff5c5c",
+      desc: "Fan of bullets from the top",
+      fields: [
+        {key:"count", label:"Bullets", def:8, min:2, max:24, step:1},
+        {key:"speed", label:"Speed", def:130, min:40, max:320, step:10},
+        {key:"duration", label:"Seconds", def:2.2, min:0.5, max:6, step:0.1},
+      ],
+    },
+    aimed: {
+      label: "Aimed Shot", color: "#ff5c5c",
+      desc: "Waves aimed at your position",
+      fields: [
+        {key:"waves", label:"Waves", def:4, min:1, max:10, step:1},
+        {key:"speed", label:"Speed", def:170, min:60, max:340, step:10},
+        {key:"gap", label:"Wave gap (s)", def:0.45, min:0.1, max:2, step:0.05},
+        {key:"duration", label:"Seconds", def:2.6, min:0.5, max:8, step:0.1},
+      ],
+    },
+    wall: {
+      label: "Wall Attack", color: "#ff5c5c",
+      desc: "A wall with a gap to dodge through",
+      fields: [
+        {key:"gapPos", label:"Gap % (0-100)", def:50, min:0, max:100, step:5},
+        {key:"gapSize", label:"Gap width", def:70, min:30, max:200, step:10},
+        {key:"speed", label:"Speed", def:110, min:40, max:280, step:10},
+        {key:"duration", label:"Seconds", def:2.6, min:0.5, max:6, step:0.1},
+      ],
+    },
+    rain: {
+      label: "Rain", color: "#ff5c5c",
+      desc: "Random bullets falling over time",
+      fields: [
+        {key:"rate", label:"Bullets/sec", def:4, min:1, max:14, step:1},
+        {key:"speed", label:"Speed", def:120, min:40, max:280, step:10},
+        {key:"duration", label:"Seconds", def:3, min:0.5, max:8, step:0.1},
+      ],
+    },
+    repeat_start: {
+      label: "Repeat", color: "#6ee7a0",
+      desc: "Repeat the following blocks",
+      fields: [{key:"count", label:"Times", def:2, min:2, max:10, step:1}],
+    },
+    repeat_end: {
+      label: "End Repeat", color: "#6ee7a0",
+      desc: "Marks the end of a repeat", fields: [],
+    },
+  };
+
+  let uidCounter = 1;
+  function makeBlock(type){
+    const def = BLOCK_DEFS[type];
+    const params = {};
+    def.fields.forEach(f => params[f.key] = f.def);
+    return {id: uidCounter++, type, params};
+  }
+
+  let sequence = [];
+
+  // ---------- Palette UI ----------
+  const paletteEl = document.getElementById("palette");
+  Object.keys(BLOCK_DEFS).forEach(type => {
+    if (type === "repeat_end") return; // added automatically with repeat_start
+    const def = BLOCK_DEFS[type];
+    const btn = document.createElement("button");
+    btn.className = "palette-btn";
+    btn.innerHTML = `<span class="swatch" style="background:${def.color}"></span>${def.label}<small>${def.desc}</small>`;
+    btn.addEventListener("click", () => {
+      sequence.push(makeBlock(type));
+      if (type === "repeat_start") sequence.push(makeBlock("repeat_end"));
+      renderSequence();
+    });
+    paletteEl.appendChild(btn);
+  });
+
+  // ---------- Sequence UI ----------
+  const seqEl = document.getElementById("sequence");
+  let dragFromIndex = null;
+
+  function renderSequence(){
+    seqEl.innerHTML = "";
+    let depth = 0;
+    sequence.forEach((block, idx) => {
+      const def = BLOCK_DEFS[block.type];
+      const li = document.createElement("li");
+      li.className = "block " + block.type;
+      li.draggable = true;
+      li.dataset.index = idx;
+      if (block.type === "repeat_end") depth = Math.max(0, depth - 1);
+      if (depth > 0) li.classList.add("indent");
+      if (block.type === "repeat_start") { /* indent applies to children, not itself */ }
+
+      const row = document.createElement("div");
+      row.className = "block-row";
+      const title = document.createElement("span");
+      title.className = "block-title";
+      title.style.color = def.color;
+      title.textContent = def.label;
+      row.appendChild(title);
+      const rm = document.createElement("button");
+      rm.className = "block-remove";
+      rm.textContent = "\u00d7";
+      rm.title = "Remove";
+      rm.addEventListener("click", () => {
+        if (block.type === "repeat_start"){
+          // remove matching repeat_end too
+          const endIdx = findMatchingEnd(idx);
+          if (endIdx !== -1) sequence.splice(endIdx, 1);
+        } else if (block.type === "repeat_end"){
+          const startIdx = findMatchingStart(idx);
+          if (startIdx !== -1) sequence.splice(startIdx, 1);
+        }
+        sequence = sequence.filter(b => b.id !== block.id);
+        renderSequence();
+      });
+      row.appendChild(rm);
+      li.appendChild(row);
+
+      if (def.fields.length){
+        const fieldsWrap = document.createElement("div");
+        fieldsWrap.className = "block-fields";
+        def.fields.forEach(f => {
+          const fw = document.createElement("div");
+          fw.className = "field";
+          const lab = document.createElement("label");
+          lab.textContent = f.label;
+          const inp = document.createElement("input");
+          inp.type = "number";
+          inp.min = f.min; inp.max = f.max; inp.step = f.step;
+          inp.value = block.params[f.key];
+          inp.addEventListener("change", () => {
+            let v = parseFloat(inp.value);
+            if (isNaN(v)) v = f.def;
+            v = Math.max(f.min, Math.min(f.max, v));
+            block.params[f.key] = v;
+            inp.value = v;
+          });
+          fw.appendChild(lab); fw.appendChild(inp);
+          fieldsWrap.appendChild(fw);
+        });
+        li.appendChild(fieldsWrap);
+      }
+
+      if (block.type === "repeat_start") depth += 1;
+
+      li.addEventListener("dragstart", () => { dragFromIndex = idx; li.classList.add("dragging"); });
+      li.addEventListener("dragend", () => { li.classList.remove("dragging"); });
+      li.addEventListener("dragover", (e) => e.preventDefault());
+      li.addEventListener("drop", (e) => {
+        e.preventDefault();
+        if (dragFromIndex === null || dragFromIndex === idx) return;
+        const moved = sequence.splice(dragFromIndex, 1)[0];
+        sequence.splice(idx, 0, moved);
+        dragFromIndex = null;
+        renderSequence();
+      });
+
+      seqEl.appendChild(li);
+    });
+  }
+
+  function findMatchingEnd(startIdx){
+    let d = 0;
+    for (let i = startIdx; i < sequence.length; i++){
+      if (sequence[i].type === "repeat_start") d++;
+      if (sequence[i].type === "repeat_end"){ d--; if (d === 0) return i; }
+    }
+    return -1;
+  }
+  function findMatchingStart(endIdx){
+    let d = 0;
+    for (let i = endIdx; i >= 0; i--){
+      if (sequence[i].type === "repeat_end") d++;
+      if (sequence[i].type === "repeat_start"){ d--; if (d === 0) return i; }
+    }
+    return -1;
+  }
+
+  // seed a small example sequence so the tool isn't empty
+  sequence = [
+    makeBlock("telegraph"),
+    makeBlock("spread"),
+    makeBlock("wait"),
+    makeBlock("wall"),
+  ];
+  renderSequence();
+
+  // ---------- Battle engine ----------
+  const canvas = document.getElementById("stage");
+  const ctx = canvas.getContext("2d");
+  const BOX = {x: 20, y: 20, w: canvas.width - 40, h: canvas.height - 40};
+
+  const playBtn = document.getElementById("play-btn");
+  const stopBtn = document.getElementById("stop-btn");
+  const statusEl = document.getElementById("status-msg");
+  const hpFill = document.getElementById("hp-fill");
+  const hpText = document.getElementById("hp-text");
+
+  const keys = {};
+  window.addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; });
+  window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+
+  let game = null;
+
+  function buildRuntime(){
+    return {
+      pc: 0,
+      t: 0,
+      repeatStack: [],
+      bullets: [],
+      spawnAcc: 0,
+      running: true,
+      won: false,
+      lost: false,
+      steps: 0,
+      telegraphFlash: 0,
+      player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 24, r: 7, hp: 100, maxHp: 100, invuln: 0},
+    };
+  }
+
+  function startFight(){
+    if (sequence.length === 0){
+      statusEl.textContent = "Add at least one block first.";
+      return;
+    }
+    game = buildRuntime();
+    playBtn.disabled = true;
+    stopBtn.disabled = false;
+    statusEl.textContent = "";
+    statusEl.className = "";
+    lastFrame = null;
+    requestAnimationFrame(loop);
+  }
+
+  function stopFight(reasonText, cls){
+    if (game) game.running = false;
+    playBtn.disabled = false;
+    stopBtn.disabled = true;
+    if (reasonText){ statusEl.textContent = reasonText; statusEl.className = cls || ""; }
+  }
+
+  document.getElementById("play-btn").addEventListener("click", startFight);
+  document.getElementById("stop-btn").addEventListener("click", () => stopFight("Stopped.", ""));
+
+  function spawnSpread(g, params){
+    const n = params.count;
+    for (let i = 0; i < n; i++){
+      const x = BOX.x + (BOX.w / (n - 1 || 1)) * i;
+      g.bullets.push({x, y: BOX.y - 4, vx: 0, vy: params.speed, r: 6});
+    }
+  }
+  function spawnAimedWave(g, params){
+    const px = g.player.x, py = g.player.y;
+    const sx = BOX.x + BOX.w/2, sy = BOX.y - 4;
+    const dx = px - sx, dy = py - sy;
+    const len = Math.hypot(dx, dy) || 1;
+    g.bullets.push({x: sx, y: sy, vx: dx/len*params.speed, vy: dy/len*params.speed, r: 7});
+  }
+  function spawnWall(g, params){
+    const gapStart = BOX.x + (params.gapPos/100) * BOX.w - params.gapSize/2;
+    const gapEnd = gapStart + params.gapSize;
+    const step = 16;
+    for (let x = BOX.x; x <= BOX.x + BOX.w; x += step){
+      if (x >= gapStart && x <= gapEnd) continue;
+      g.bullets.push({x, y: BOX.y - 4, vx: 0, vy: params.speed, r: 6});
+    }
+  }
+  function spawnRainDrop(g, params){
+    const x = BOX.x + Math.random() * BOX.w;
+    g.bullets.push({x, y: BOX.y - 4, vx: 0, vy: params.speed, r: 5});
+  }
+
+  function enterInstruction(g, block){
+    if (!block) return;
+    if (block.type === "spread") spawnSpread(g, block.params);
+    if (block.type === "wall") spawnWall(g, block.params);
+    if (block.type === "aimed") { g.aimedWavesLeft = block.params.waves - 1; g.aimedGapAcc = 0; spawnAimedWave(g, block.params); }
+    if (block.type === "telegraph") g.telegraphFlash = block.params.duration;
+    if (block.type === "rain") g.spawnAcc = 0;
+  }
+
+  let lastFrame = null;
+  function loop(ts){
+    if (!game || !game.running) return;
+    if (lastFrame === null) lastFrame = ts;
+    let dt = (ts - lastFrame) / 1000;
+    dt = Math.min(dt, 0.05);
+    lastFrame = ts;
+
+    update(game, dt);
+    render(game);
+
+    if (game.won){ stopFight("Fight cleared!", "win"); return; }
+    if (game.lost){ stopFight("You were hit too many times.", "lose"); return; }
+    requestAnimationFrame(loop);
+  }
+
+  function update(g, dt){
+    // player movement
+    const speed = 150;
+    let dx = 0, dy = 0;
+    if (keys["arrowleft"] || keys["a"]) dx -= 1;
+    if (keys["arrowright"] || keys["d"]) dx += 1;
+    if (keys["arrowup"] || keys["w"]) dy -= 1;
+    if (keys["arrowdown"] || keys["s"]) dy += 1;
+    if (dx || dy){
+      const len = Math.hypot(dx, dy);
+      g.player.x += (dx/len) * speed * dt;
+      g.player.y += (dy/len) * speed * dt;
+    }
+    g.player.x = Math.max(BOX.x + g.player.r, Math.min(BOX.x + BOX.w - g.player.r, g.player.x));
+    g.player.y = Math.max(BOX.y + g.player.r, Math.min(BOX.y + BOX.h - g.player.r, g.player.y));
+    if (g.player.invuln > 0) g.player.invuln -= dt;
+    if (g.telegraphFlash > 0) g.telegraphFlash -= dt;
+
+    // instruction execution
+    if (g.pc === 0 && g.t === 0 && g.steps === 0){ enterInstruction(g, sequence[0]); }
+
+    const block = sequence[g.pc];
+    if (block){
+      g.t += dt;
+      const dur = block.params && block.params.duration !== undefined ? block.params.duration : 0;
+
+      if (block.type === "aimed"){
+        g.aimedGapAcc = (g.aimedGapAcc || 0) + dt;
+        if (g.aimedWavesLeft > 0 && g.aimedGapAcc >= block.params.gap){
+          g.aimedGapAcc = 0;
+          g.aimedWavesLeft -= 1;
+          spawnAimedWave(g, block.params);
+        }
+      }
+      if (block.type === "rain"){
+        g.spawnAcc += dt;
+        const interval = 1 / block.params.rate;
+        while (g.spawnAcc >= interval){
+          g.spawnAcc -= interval;
+          spawnRainDrop(g, block.params);
+        }
+      }
+
+      const isRepeatMarker = block.type === "repeat_start" || block.type === "repeat_end";
+      const finished = isRepeatMarker ? true : g.t >= dur;
+
+      if (finished){
+        g.steps++;
+        if (g.steps > 800){ g.won = true; return; } // safety cap
+
+        if (block.type === "repeat_start"){
+          g.repeatStack.push({startIdx: g.pc + 1, remaining: block.params.count - 1});
+          g.pc += 1;
+        } else if (block.type === "repeat_end"){
+          const top = g.repeatStack[g.repeatStack.length - 1];
+          if (top && top.remaining > 0){
+            top.remaining -= 1;
+            g.pc = top.startIdx;
+          } else {
+            g.repeatStack.pop();
+            g.pc += 1;
+          }
+        } else {
+          g.pc += 1;
+        }
+        g.t = 0;
+        if (g.pc < sequence.length){
+          enterInstruction(g, sequence[g.pc]);
+        }
+      }
+    }
+    if (g.pc >= sequence.length){ g.won = true; }
+
+    // bullets
+    g.bullets.forEach(b => { b.x += b.vx * dt; b.y += b.vy * dt; });
+    g.bullets = g.bullets.filter(b => b.x > BOX.x - 30 && b.x < BOX.x + BOX.w + 30 && b.y > BOX.y - 30 && b.y < BOX.y + BOX.h + 30);
+
+    // collisions
+    if (g.player.invuln <= 0){
+      for (const b of g.bullets){
+        const d = Math.hypot(b.x - g.player.x, b.y - g.player.y);
+        if (d < b.r + g.player.r){
+          g.player.hp -= 10;
+          g.player.invuln = 1.0;
+          hpFill.style.width = Math.max(0, g.player.hp) + "%";
+          hpText.textContent = Math.max(0, g.player.hp) + "/100";
+          if (g.player.hp <= 0) g.lost = true;
+          break;
+        }
+      }
+    }
+  }
+
+  function render(g){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // box
+    ctx.strokeStyle = g.telegraphFlash > 0 && Math.floor(g.telegraphFlash * 10) % 2 === 0 ? "#ffd23f" : "#3a3552";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(BOX.x, BOX.y, BOX.w, BOX.h);
+
+    // bullets
+    ctx.fillStyle = "#ff5c5c";
+    g.bullets.forEach(b => {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // player soul
+    ctx.fillStyle = g.player.invuln > 0 && Math.floor(g.player.invuln * 12) % 2 === 0 ? "#ffffff" : "#ffd23f";
+    ctx.beginPath();
+    ctx.arc(g.player.x, g.player.y, g.player.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // idle render
+  render({bullets: [], player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 24, r: 7, invuln: 0}, telegraphFlash: 0});
+})();
+</script>
+</body>
+</html>
