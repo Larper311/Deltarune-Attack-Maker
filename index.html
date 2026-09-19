@@ -715,9 +715,9 @@
           if (f.type === "text"){
             const inp = document.createElement("input");
             inp.type = "text";
-            inp.value = paramsObj[f.key] == null ? "" : paramsObj[f.key];
+            inp.value = block.params[f.key] == null ? "" : block.params[f.key];
             inp.style.width = "150px";
-            inp.addEventListener("change", () => { paramsObj[f.key] = inp.value; });
+            inp.addEventListener("change", () => { block.params[f.key] = inp.value; });
             fw.appendChild(inp);
           } else if (f.type === "select"){
             const sel = document.createElement("select");
@@ -911,7 +911,7 @@
   function idleState(){
     return {
       bullets: [], lasers: [], rings: [], particles: [],
-      player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 28, r: 6.5, invuln: 0},
+      player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 28, r: 6.5, invuln: 0, moving: false, hitThisFrame: false},
       telegraphFlash: 0, bossX: BOX.x + BOX.w/2, flashLeft: 0, cage: null, giga: null, split: null, boardSplit: null,
     };
   }
