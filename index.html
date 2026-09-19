@@ -112,6 +112,7 @@
   .block.repeat_start, .block.repeat_end{border-left-color:var(--accent-green);}
   .block.move_boss{border-left-color:var(--accent-blue);}
   .block.clear_bullets, .block.shake, .block.flash, .block.slowmo, .block.arena_shrink{border-left-color:var(--accent-pink);}
+  .block.combo{border-left-color:var(--accent-yellow);}
   .block.dragging{opacity:0.4;}
   .block-row{display:flex; align-items:center; justify-content:space-between; gap:8px;}
   .block-title{font-weight:700; font-size:13px;}
@@ -211,6 +212,9 @@
     {value:"heart", label:"Heart"},
     {value:"star", label:"Star"},
     {value:"cross", label:"Cross"},
+    {value:"sword", label:"Sword"},
+    {value:"axe", label:"Axe"},
+    {value:"scythe", label:"Scythe"},
   ];
 
   const BLOCK_DEFS = {
@@ -383,12 +387,14 @@
     },
     expanding_ring: {
       label: "Expanding Rings", color: "#ff9f43", group: "Attacks",
-      desc: "Concentric rings that grow from the boss",
+      desc: "Concentric rings that grow from the boss, each with a gap to dodge through",
       fields: [
         {key:"count", label:"Rings", type:"number", def:4, min:1, max:10, step:1},
         {key:"gap", label:"Ring gap (s)", type:"number", def:0.45, min:0.15, max:1.5, step:0.05},
         {key:"speed", label:"Expand speed", type:"number", def:95, min:30, max:220, step:5},
         {key:"thickness", label:"Thickness", type:"number", def:8, min:4, max:18, step:1},
+        {key:"escapeDeg", label:"Gap width \u00b0", type:"number", def:70, min:30, max:160, step:10},
+        {key:"escapePos", label:"Gap angle \u00b0", type:"number", def:90, min:0, max:350, step:10},
         {key:"duration", label:"Seconds", type:"number", def:3, min:0.8, max:9, step:0.1},
       ],
     },
@@ -491,15 +497,24 @@
         {key:"shape", label:"Shape", type:"select", def:"star", options: SHAPE_OPTS},
       ],
     },
+    combo: {
+      label: "Combo", color: "#ffd23f", group: "Special",
+      desc: "Attach up to 4 attacks or effects to fire together at once",
+      fields: [{key:"duration", label:"Seconds", type:"number", def:2.5, min:0.5, max:10, step:0.1}],
+    },
   };
 
   const GROUP_ORDER = ["Flow", "Attacks", "Special"];
+  const COMBO_ALLOWED = ["spread","aimed","wall","moving_wall","rain","ring","spiral","homing",
+    "laser","expanding_ring","cross","wave","bounce","shotgun","orbit","splitter","chaos",
+    "move_boss","telegraph","shake","flash","slowmo","arena_shrink","clear_bullets","wait"];
   let uidCounter = 1;
 
   function makeBlock(type){
     const def = BLOCK_DEFS[type];
     const params = {};
     (def.fields || []).forEach(f => params[f.key] = f.def);
+    if (type === "combo") params.slots = [null, null, null, null];
     return {id: uidCounter++, type, params};
   }
 
@@ -531,6 +546,44 @@
 
   const seqEl = document.getElementById("sequence");
   let dragFromIndex = null;
+
+  function renderFieldsInto(container, fields, paramsObj){
+    const fieldsWrap = document.createElement("div");
+    fieldsWrap.className = "block-fields";
+    fields.forEach(f => {
+      const fw = document.createElement("div");
+      fw.className = "field";
+      const lab = document.createElement("label");
+      lab.textContent = f.label;
+      fw.appendChild(lab);
+      if (f.type === "select"){
+        const sel = document.createElement("select");
+        f.options.forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt.value; o.textContent = opt.label;
+          if (paramsObj[f.key] === opt.value) o.selected = true;
+          sel.appendChild(o);
+        });
+        sel.addEventListener("change", () => { paramsObj[f.key] = sel.value; });
+        fw.appendChild(sel);
+      } else {
+        const inp = document.createElement("input");
+        inp.type = "number";
+        inp.min = f.min; inp.max = f.max; inp.step = f.step;
+        inp.value = paramsObj[f.key];
+        inp.addEventListener("change", () => {
+          let v = parseFloat(inp.value);
+          if (isNaN(v)) v = f.def;
+          v = Math.max(f.min, Math.min(f.max, v));
+          paramsObj[f.key] = v;
+          inp.value = v;
+        });
+        fw.appendChild(inp);
+      }
+      fieldsWrap.appendChild(fw);
+    });
+    container.appendChild(fieldsWrap);
+  }
 
   function renderSequence(){
     seqEl.innerHTML = "";
@@ -608,6 +661,68 @@
           fieldsWrap.appendChild(fw);
         });
         li.appendChild(fieldsWrap);
+      }
+
+      if (block.type === "combo"){
+        if (!block.params.slots) block.params.slots = [null, null, null, null];
+        const slotsWrap = document.createElement("div");
+        slotsWrap.style.marginTop = "8px";
+        slotsWrap.style.display = "flex";
+        slotsWrap.style.flexDirection = "column";
+        slotsWrap.style.gap = "6px";
+        block.params.slots.forEach((slot, si) => {
+          const slotBox = document.createElement("div");
+          slotBox.style.border = "1px dashed var(--border)";
+          slotBox.style.borderRadius = "6px";
+          slotBox.style.padding = "6px 8px";
+
+          const selRow = document.createElement("div");
+          selRow.style.display = "flex";
+          selRow.style.alignItems = "center";
+          selRow.style.gap = "6px";
+          const lab = document.createElement("span");
+          lab.style.fontSize = "10px";
+          lab.style.color = "var(--text-muted)";
+          lab.style.textTransform = "uppercase";
+          lab.textContent = "Slot " + (si + 1);
+          selRow.appendChild(lab);
+
+          const sel = document.createElement("select");
+          sel.style.flex = "1";
+          sel.style.fontSize = "12px";
+          sel.style.background = "var(--bg-deep)";
+          sel.style.color = "var(--text-primary)";
+          sel.style.border = "1px solid var(--border)";
+          sel.style.borderRadius = "5px";
+          sel.style.padding = "4px";
+          const emptyOpt = document.createElement("option");
+          emptyOpt.value = ""; emptyOpt.textContent = "(empty)";
+          sel.appendChild(emptyOpt);
+          COMBO_ALLOWED.forEach(t => {
+            const d = BLOCK_DEFS[t];
+            const o = document.createElement("option");
+            o.value = t; o.textContent = d.label;
+            if (slot && slot.type === t) o.selected = true;
+            sel.appendChild(o);
+          });
+          sel.addEventListener("change", () => {
+            const t = sel.value;
+            if (!t) block.params.slots[si] = null;
+            else { const nb = makeBlock(t); block.params.slots[si] = {type: t, params: nb.params}; }
+            renderSequence();
+          });
+          selRow.appendChild(sel);
+          slotBox.appendChild(selRow);
+
+          if (slot){
+            const subDef = BLOCK_DEFS[slot.type];
+            if (subDef && subDef.fields && subDef.fields.length){
+              renderFieldsInto(slotBox, subDef.fields, slot.params);
+            }
+          }
+          slotsWrap.appendChild(slotBox);
+        });
+        li.appendChild(slotsWrap);
       }
 
       if (block.type === "repeat_start") depth += 1;
@@ -724,6 +839,7 @@
       telegraphFlash: 0, bossX: BOX.x + BOX.w/2, bossFrom: BOX.x + BOX.w/2, bossTo: BOX.x + BOX.w/2,
       spiralAngle: 0, timeScale: 1, slowmoLeft: 0, shakeLeft: 0, shakeIntensity: 0,
       flashLeft: 0, flashColor: "white", arenaShrinkLeft: 0, arenaTargetScale: 1, currentScale: 1,
+      comboProcs: null,
       player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 28, r: 6.5, hp: 100, maxHp: 100, invuln: 0, hitThisFrame: false},
     };
   }
@@ -810,7 +926,7 @@
     const sx = g.bossX, sy = BOX.y - 4;
     const angle = (Math.random()*36 - 18) * Math.PI / 180;
     g.bullets.push(mkBullet(sx, sy, Math.sin(angle)*params.speed, Math.cos(angle)*params.speed, 6, params.shape, {
-      homing: true, speed: params.speed, turnRate: params.turnRate
+      homing: true, speed: params.speed, turnRate: params.turnRate, life: 6.5
     }));
   }
   function spawnShotgunWave(g, params){
@@ -874,6 +990,129 @@
     }
   }
 
+  function spawnExpandingRing(g, p, idx){
+    const gapAngle = (((p.escapePos || 90) + (idx || 0) * 47) % 360) * Math.PI / 180;
+    const gapWidth = ((p.escapeDeg || 70) * Math.PI / 180);
+    g.rings.push({
+      cx: g.bossX, cy: BOX.y + 28, r: 8, speed: p.speed, thickness: p.thickness, maxR: 420,
+      gapAngle, gapWidth,
+    });
+  }
+  function angleInGap(ang, gapAngle, gapWidth){
+    let diff = ang - gapAngle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    return Math.abs(diff) <= gapWidth / 2;
+  }
+
+  function comboStart(g, proc){
+    const p = proc.params;
+    switch (proc.type){
+      case "spread": spawnSpread(g, p); break;
+      case "wall": spawnWall(g, p); break;
+      case "ring": spawnRing(g, p); break;
+      case "cross": spawnCross(g, p); break;
+      case "bounce": spawnBounce(g, p); break;
+      case "orbit": spawnOrbit(g, p); break;
+      case "splitter": spawnSplitter(g, p); break;
+      case "aimed": proc.state.wavesLeft = p.waves - 1; proc.state.gapAcc = 0; spawnAimedWave(g, p); break;
+      case "homing": proc.state.left = p.count - 1; proc.state.gapAcc = 0; spawnHomingBullet(g, p); break;
+      case "shotgun": proc.state.wavesLeft = p.waves - 1; proc.state.gapAcc = 0; spawnShotgunWave(g, p); break;
+      case "rain": case "moving_wall": case "chaos": proc.state.spawnAcc = 0; break;
+      case "spiral": proc.state.spawnAcc = 0; proc.state.angle = 0; break;
+      case "wave": proc.state.acc = 0; spawnWaveStreams(g, p); break;
+      case "expanding_ring":
+        proc.state.wavesLeft = p.count; proc.state.gapAcc = 0; proc.state.idx = 0;
+        spawnExpandingRing(g, p, proc.state.idx); proc.state.idx++; proc.state.wavesLeft--; break;
+      case "telegraph": g.telegraphFlash = Math.max(g.telegraphFlash || 0, p.duration); break;
+      case "shake": g.shakeLeft = p.duration; g.shakeIntensity = p.intensity; break;
+      case "flash": g.flashLeft = p.duration; g.flashColor = p.color || "white"; break;
+      case "slowmo": g.timeScale = (p.factor || 40) / 100; g.slowmoLeft = p.duration; break;
+      case "arena_shrink": g.arenaTargetScale = (p.scale || 70) / 100; g.arenaShrinkLeft = p.duration; break;
+      case "clear_bullets": g.bullets = []; g.lasers = []; g.rings = []; break;
+      case "move_boss": proc.state.from = g.bossX; proc.state.to = BOX.x + (p.targetPercent / 100) * BOX.w; break;
+      case "laser":
+        g.lasers.push({mode: p.mode || "sweep", width: p.width || 22, speed: p.speed || 90, t: 0, duration: p.duration || 2.4, x: BOX.x + BOX.w/2, dir: 1}); break;
+      default: break; // "wait" and unknowns: nothing to do
+    }
+  }
+
+  function comboTick(g, proc, dt){
+    const p = proc.params;
+    switch (proc.type){
+      case "aimed":
+        proc.state.gapAcc += dt;
+        if (proc.state.wavesLeft > 0 && proc.state.gapAcc >= p.gap){ proc.state.gapAcc = 0; proc.state.wavesLeft--; spawnAimedWave(g, p); }
+        break;
+      case "homing":
+        proc.state.gapAcc += dt;
+        if (proc.state.left > 0 && proc.state.gapAcc >= p.gap){ proc.state.gapAcc = 0; proc.state.left--; spawnHomingBullet(g, p); }
+        break;
+      case "shotgun":
+        proc.state.gapAcc += dt;
+        if (proc.state.wavesLeft > 0 && proc.state.gapAcc >= p.gap){ proc.state.gapAcc = 0; proc.state.wavesLeft--; spawnShotgunWave(g, p); }
+        break;
+      case "rain":
+        proc.state.spawnAcc += dt;
+        { const interval = 1 / p.rate; while (proc.state.spawnAcc >= interval){ proc.state.spawnAcc -= interval; spawnRainDrop(g, p); } }
+        break;
+      case "spiral":
+        proc.state.spawnAcc += dt; proc.state.angle += p.rotSpeed * dt;
+        { const interval = 1 / p.rate;
+          while (proc.state.spawnAcc >= interval){
+            proc.state.spawnAcc -= interval;
+            const cx = g.bossX, cy = BOX.y + 18;
+            for (let i = 0; i < p.arms; i++){
+              const ang = (proc.state.angle + (360/p.arms)*i) * Math.PI / 180;
+              g.bullets.push(mkBullet(cx, cy, Math.sin(ang)*p.speed, Math.cos(ang)*p.speed, 5, p.shape));
+            }
+          }
+        }
+        break;
+      case "moving_wall":
+        proc.state.spawnAcc += dt;
+        { const interval = 0.14;
+          while (proc.state.spawnAcc >= interval){
+            proc.state.spawnAcc -= interval;
+            const frac = 0.5 + 0.5 * Math.sin(proc.elapsed * p.oscSpeed);
+            spawnWallRow(g, BOX.x + frac * BOX.w - p.gapSize/2, p.gapSize, p.speed, p.shape);
+          }
+        }
+        break;
+      case "expanding_ring":
+        if (proc.state.wavesLeft > 0){
+          proc.state.gapAcc = (proc.state.gapAcc || 0) + dt;
+          if (proc.state.gapAcc >= (p.gap || 0.45)){
+            proc.state.gapAcc = 0;
+            spawnExpandingRing(g, p, proc.state.idx); proc.state.idx++; proc.state.wavesLeft--;
+          }
+        }
+        break;
+      case "wave":
+        proc.state.acc = (proc.state.acc || 0) + dt;
+        if (proc.state.acc >= 0.22){ proc.state.acc = 0; spawnWaveStreams(g, p); }
+        break;
+      case "chaos":
+        proc.state.spawnAcc += dt;
+        { const rate = 3.5 * (p.intensity || 1); const interval = 1 / rate;
+          while (proc.state.spawnAcc >= interval){
+            proc.state.spawnAcc -= interval;
+            if (Math.random() < 0.55) spawnRainDrop(g, {speed: 100 + Math.random()*60, shape: p.shape});
+            else if (Math.random() < 0.5){
+              const ang = Math.random()*Math.PI*2;
+              g.bullets.push(mkBullet(g.bossX, BOX.y+24, Math.sin(ang)*110, Math.cos(ang)*110, 5, p.shape));
+            } else spawnAimedWave(g, {speed: 140, shape: p.shape});
+          }
+        }
+        break;
+      case "move_boss":
+        { const frac = Math.min(1, proc.elapsed / Math.max(0.001, p.duration || 1));
+          g.bossX = proc.state.from + (proc.state.to - proc.state.from) * frac; }
+        break;
+      default: break;
+    }
+  }
+
   function enterInstruction(g, block){
     if (!block) return;
     const p = block.params || {};
@@ -899,8 +1138,9 @@
       case "laser":
         g.lasers.push({mode: p.mode || "sweep", width: p.width || 22, speed: p.speed || 90, t: 0, duration: p.duration || 2.4, x: BOX.x + BOX.w/2, dir: 1}); break;
       case "expanding_ring":
-        g.ringWavesLeft = p.count; g.ringGapAcc = 0; g.ringParams = p;
-        g.rings.push({cx: g.bossX, cy: BOX.y + 28, r: 8, speed: p.speed, thickness: p.thickness, maxR: 420});
+        g.ringWavesLeft = p.count; g.ringGapAcc = 0; g.ringParams = p; g.ringSpawnIndex = 0;
+        spawnExpandingRing(g, p, g.ringSpawnIndex);
+        g.ringSpawnIndex++;
         g.ringWavesLeft--; break;
       case "cross": spawnCross(g, p); break;
       case "wave": g.waveAcc = 0; g.waveParams = p; spawnWaveStreams(g, p); break;
@@ -914,6 +1154,13 @@
       case "giga_laser":
         g.giga = {charge: p.charge || 1.1, hold: p.hold || 1.4, width: p.width || 70, t: 0, phase: "charge", x: g.bossX}; break;
       case "chaos": g.chaosParams = p; g.spawnAcc = 0; break;
+      case "combo":
+        g.comboProcs = (p.slots || []).filter(Boolean).map(sub => {
+          const proc = {type: sub.type, params: sub.params, state: {}, elapsed: 0};
+          comboStart(g, proc);
+          return proc;
+        });
+        break;
     }
   }
 
@@ -1030,7 +1277,8 @@
         g.ringGapAcc = (g.ringGapAcc || 0) + dt;
         if (g.ringGapAcc >= (g.ringParams.gap || 0.45)){
           g.ringGapAcc = 0;
-          g.rings.push({cx: g.bossX, cy: BOX.y + 28, r: 8, speed: g.ringParams.speed, thickness: g.ringParams.thickness, maxR: 420});
+          spawnExpandingRing(g, g.ringParams, g.ringSpawnIndex);
+          g.ringSpawnIndex++;
           g.ringWavesLeft--;
         }
       }
@@ -1054,6 +1302,12 @@
       if (block.type === "move_boss"){
         const frac = Math.min(1, g.t / Math.max(0.001, dur));
         g.bossX = g.bossFrom + (g.bossTo - g.bossFrom) * frac;
+      }
+      if (block.type === "combo" && g.comboProcs){
+        g.comboProcs.forEach(proc => {
+          proc.elapsed += dt;
+          if (proc.elapsed <= (proc.params.duration || 9999)) comboTick(g, proc, dt);
+        });
       }
       if (block.type === "cage" && g.cage){
         const c = g.cage; c.t += dt;
@@ -1088,6 +1342,7 @@
         g.t = 0;
         if (block.type === "cage") g.cage = null;
         if (block.type === "giga_laser") g.giga = null;
+        if (block.type === "combo") g.comboProcs = null;
         if (g.pc < fightSequence.length) enterInstruction(g, fightSequence[g.pc]);
       }
     }
@@ -1143,6 +1398,7 @@
       } else if (!b.orbit){
         b.x += b.vx * dt; b.y += b.vy * dt;
       }
+      b.life -= dt;
       if (b.bounce && b.bouncesLeft > 0){
         if (b.x < BOX.x + b.r){ b.x = BOX.x + b.r; b.vx = Math.abs(b.vx); b.bouncesLeft--; }
         if (b.x > BOX.x + BOX.w - b.r){ b.x = BOX.x + BOX.w - b.r; b.vx = -Math.abs(b.vx); b.bouncesLeft--; }
@@ -1166,7 +1422,6 @@
     g.particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; p.vx *= 0.96; p.vy *= 0.96; });
     g.particles = g.particles.filter(p => p.life > 0);
 
-    // FIXED collision: one hit per frame, invuln uses real time
     if (g.player.invuln <= 0 && !g.player.hitThisFrame){
       let hit = false;
       for (const b of g.bullets){
@@ -1185,7 +1440,13 @@
       if (!hit){
         for (const R of g.rings){
           const d = Math.hypot(g.player.x - R.cx, g.player.y - R.cy);
-          if (Math.abs(d - R.r) < R.thickness/2 + g.player.r){ hit = true; break; }
+          if (Math.abs(d - R.r) < R.thickness/2 + g.player.r){
+            if (R.gapAngle !== undefined){
+              const ang = Math.atan2(g.player.y - R.cy, g.player.x - R.cx);
+              if (angleInGap(ang, R.gapAngle, R.gapWidth)) continue;
+            }
+            hit = true; break;
+          }
         }
       }
       if (!hit && g.cage){
@@ -1242,6 +1503,39 @@
       ctx.lineTo(x + t, y + r); ctx.lineTo(x - t, y + r);
       ctx.lineTo(x - t, y + t); ctx.lineTo(x - r, y + t);
       ctx.lineTo(x - r, y - t); ctx.lineTo(x - t, y - t);
+      ctx.closePath();
+    } else if (shape === "sword"){
+      ctx.moveTo(x, y - r*1.4);
+      ctx.lineTo(x + r*0.28, y - r*0.3);
+      ctx.lineTo(x + r*0.9, y - r*0.05);
+      ctx.lineTo(x + r*0.9, y + r*0.15);
+      ctx.lineTo(x + r*0.15, y + r*0.15);
+      ctx.lineTo(x + r*0.15, y + r*1.3);
+      ctx.lineTo(x - r*0.15, y + r*1.3);
+      ctx.lineTo(x - r*0.15, y + r*0.15);
+      ctx.lineTo(x - r*0.9, y + r*0.15);
+      ctx.lineTo(x - r*0.9, y - r*0.05);
+      ctx.lineTo(x - r*0.28, y - r*0.3);
+      ctx.closePath();
+    } else if (shape === "axe"){
+      ctx.moveTo(x - r*0.12, y - r*1.3);
+      ctx.lineTo(x + r*0.12, y - r*1.3);
+      ctx.lineTo(x + r*0.12, y + r*1.3);
+      ctx.lineTo(x - r*0.12, y + r*1.3);
+      ctx.closePath();
+      ctx.moveTo(x + r*0.1, y - r*1.1);
+      ctx.quadraticCurveTo(x + r*1.3, y - r*1.1, x + r*1.25, y - r*0.3);
+      ctx.quadraticCurveTo(x + r*0.9, y - r*0.15, x + r*0.1, y - r*0.5);
+      ctx.closePath();
+    } else if (shape === "scythe"){
+      ctx.moveTo(x - r*0.1, y - r*0.2);
+      ctx.lineTo(x + r*0.1, y - r*0.2);
+      ctx.lineTo(x + r*0.1, y + r*1.4);
+      ctx.lineTo(x - r*0.1, y + r*1.4);
+      ctx.closePath();
+      ctx.moveTo(x, y - r*0.2);
+      ctx.quadraticCurveTo(x + r*1.3, y - r*0.6, x + r*0.9, y - r*1.5);
+      ctx.quadraticCurveTo(x + r*0.5, y - r*0.9, x, y - r*0.2);
       ctx.closePath();
     } else ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -1302,13 +1596,22 @@
     g.rings.forEach(R => {
       ctx.strokeStyle = "rgba(255, 92, 92, 0.85)";
       ctx.lineWidth = R.thickness;
-      ctx.beginPath(); ctx.arc(R.cx, R.cy, R.r, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath();
+      if (R.gapAngle !== undefined){
+        const start = R.gapAngle + R.gapWidth / 2;
+        const end = R.gapAngle - R.gapWidth / 2 + Math.PI * 2;
+        ctx.arc(R.cx, R.cy, R.r, start, end);
+      } else {
+        ctx.arc(R.cx, R.cy, R.r, 0, Math.PI*2);
+      }
+      ctx.stroke();
     });
 
     g.bullets.forEach(b => {
       if (b.shape === "heart") ctx.fillStyle = "#ff7eb9";
       else if (b.shape === "star") ctx.fillStyle = "#ffd23f";
       else if (b.shape === "cross") ctx.fillStyle = "#a78bfa";
+      else if (b.shape === "sword" || b.shape === "axe" || b.shape === "scythe") ctx.fillStyle = "#c9d3e0";
       else ctx.fillStyle = "#ff5c5c";
       drawShape(ctx, b.x, b.y, b.r, b.shape);
     });
