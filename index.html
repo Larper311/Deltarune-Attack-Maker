@@ -20,18 +20,10 @@
     --accent-green:#6ee7a0;
     --accent-violet:#a78bfa;
     --accent-blue:#5ec8ff;
+    --accent-pink:#ff7eb9;
+    --accent-orange:#ff9f43;
     --font-display:'Cinzel', Georgia, 'Times New Roman', serif;
     --font-body:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg-deep:#14121f; --bg-panel:#1e1b2c; --bg-panel-alt:#262238; --border:#3a3552;
-      --text-primary:#f1eef9; --text-muted:#9993b5;
-    }
-  }
-  :root[data-theme="dark"]{
-    --bg-deep:#14121f; --bg-panel:#1e1b2c; --bg-panel-alt:#262238; --border:#3a3552;
-    --text-primary:#f1eef9; --text-muted:#9993b5;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -42,7 +34,7 @@
     min-height:100vh;
     padding:28px 20px 60px;
   }
-  .wrap{max-width:1320px;margin:0 auto;}
+  .wrap{max-width:1380px;margin:0 auto;}
   header{
     display:flex; align-items:baseline; justify-content:space-between; gap:16px;
     flex-wrap:wrap;
@@ -58,18 +50,16 @@
     color:var(--text-primary);
   }
   h1 span{color:var(--accent-yellow);}
-  .subtitle{color:var(--text-muted); font-size:14px; max-width:560px; line-height:1.5;}
-
+  .subtitle{color:var(--text-muted); font-size:14px; max-width:620px; line-height:1.5;}
   .layout{
     display:grid;
-    grid-template-columns: 250px 1fr 380px;
+    grid-template-columns: 260px 1fr 380px;
     gap:18px;
     align-items:start;
   }
-  @media (max-width: 1040px){
+  @media (max-width: 1100px){
     .layout{grid-template-columns:1fr;}
   }
-
   .panel{
     background:var(--bg-panel);
     border:1px solid var(--border);
@@ -85,9 +75,6 @@
     margin:0 0 12px 0;
     font-weight:700;
   }
-  .panel h2 small{display:block; text-transform:none; letter-spacing:0; font-size:11px; color:var(--text-muted); margin-top:3px; font-weight:400;}
-
-  /* palette */
   .palette-group{margin-bottom:14px;}
   .palette-group-title{font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin:0 0 6px 2px;}
   .palette-btn{
@@ -95,22 +82,20 @@
     background:var(--bg-panel-alt);
     border:1px solid var(--border);
     color:var(--text-primary);
-    padding:10px 12px;
+    padding:9px 11px;
     border-radius:8px;
-    margin-bottom:8px;
+    margin-bottom:7px;
     cursor:pointer;
     font-family:var(--font-body);
-    font-size:13.5px;
+    font-size:13px;
     font-weight:600;
     transition:border-color .15s ease, transform .1s ease;
   }
   .palette-btn:hover{border-color:var(--accent-yellow);}
   .palette-btn:active{transform:scale(0.98);}
-  .palette-btn small{display:block;font-weight:400;color:var(--text-muted);margin-top:2px;font-size:11.5px;}
-  .swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;}
-
-  /* sequence */
-  #sequence{list-style:none;margin:0;padding:0;min-height:60px;}
+  .palette-btn small{display:block;font-weight:400;color:var(--text-muted);margin-top:2px;font-size:11px;line-height:1.35;}
+  .swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:middle;}
+  #sequence{list-style:none;margin:0;padding:0;min-height:60px;max-height:72vh;overflow-y:auto;}
   #sequence:empty::after{
     content:"Add blocks from the left to build your fight.";
     color:var(--text-muted); font-size:13px; display:block; padding:20px 4px;
@@ -120,32 +105,31 @@
     border:1px solid var(--border);
     border-left:4px solid var(--accent-violet);
     border-radius:8px;
-    padding:10px 12px;
-    margin-bottom:8px;
+    padding:9px 11px;
+    margin-bottom:7px;
     cursor:grab;
   }
   .block.repeat_start, .block.repeat_end{border-left-color:var(--accent-green);}
   .block.move_boss{border-left-color:var(--accent-blue);}
+  .block.clear_bullets, .block.shake, .block.flash, .block.slowmo, .block.arena_shrink{border-left-color:var(--accent-pink);}
   .block.dragging{opacity:0.4;}
   .block-row{display:flex; align-items:center; justify-content:space-between; gap:8px;}
-  .block-title{font-weight:700; font-size:13.5px;}
+  .block-title{font-weight:700; font-size:13px;}
   .block-remove{
     background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;
     line-height:1; padding:2px 6px;
   }
   .block-remove:hover{color:var(--accent-red);}
-  .block-fields{display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;}
-  .field{display:flex; flex-direction:column; gap:3px;}
-  .field label{font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;}
+  .block-fields{display:flex; flex-wrap:wrap; gap:8px; margin-top:7px;}
+  .field{display:flex; flex-direction:column; gap:2px;}
+  .field label{font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;}
   .field input, .field select{
     background:var(--bg-deep); border:1px solid var(--border); color:var(--text-primary);
-    border-radius:5px; padding:5px 6px; font-size:12.5px; font-family:var(--font-body);
+    border-radius:5px; padding:4px 5px; font-size:12px; font-family:var(--font-body);
   }
-  .field input{width:72px;}
-  .field select{width:96px;}
-  .indent{margin-left:22px;}
-
-  /* fight panel */
+  .field input{width:68px;}
+  .field select{width:92px;}
+  .indent{margin-left:20px;}
   #stage-wrap{display:flex; flex-direction:column; align-items:center; gap:10px;}
   canvas#stage{
     background:#0a0912;
@@ -156,11 +140,10 @@
   .hpbar-wrap{width:100%; max-width:340px;}
   .hpbar-label{display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:3px;}
   .hpbar{height:10px; background:var(--bg-panel-alt); border:1px solid var(--border); border-radius:5px; overflow:hidden;}
-  .hpbar-fill{height:100%; background:var(--accent-yellow); transition:width .15s ease;}
+  .hpbar-fill{height:100%; background:var(--accent-yellow); transition:width .12s ease;}
   #status-msg{font-size:13px; color:var(--text-muted); min-height:18px; text-align:center;}
   #status-msg.win{color:var(--accent-green); font-weight:700;}
   #status-msg.lose{color:var(--accent-red); font-weight:700;}
-
   .btn{
     font-family:var(--font-body); font-weight:700; font-size:13.5px;
     padding:10px 18px; border-radius:7px; border:1px solid var(--border);
@@ -169,10 +152,11 @@
   .btn.primary{background:var(--accent-yellow); color:#221d10; border-color:var(--accent-yellow);}
   .btn.primary:hover{filter:brightness(1.07);}
   .btn:disabled{opacity:0.45; cursor:not-allowed;}
-  .btn-row{display:flex; gap:8px; justify-content:center;}
-
+  .btn-row{display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
   .controls-note{font-size:11.5px; color:var(--text-muted); text-align:center; line-height:1.5;}
   code{background:var(--bg-panel-alt); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:11px;}
+  .toolbar{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .toolbar .btn{padding:6px 10px; font-size:12px;}
 </style>
 </head>
 <body>
@@ -180,25 +164,27 @@
   <header>
     <div>
       <h1>Boss Fight <span>Maker</span></h1>
-      <div class="subtitle">Snap together blocks to script a boss's attack pattern — mix bullet shapes, spirals, homing shots, and boss movement — then test-dodge it yourself.</div>
+      <div class="subtitle">Build Deltarune-style bullet patterns with blocks — walls, spirals, lasers, cages, homing hearts, arena shrink, and more. Test-dodge it yourself.</div>
     </div>
   </header>
-
   <div class="layout">
     <div class="panel">
       <h2>Blocks</h2>
       <div id="palette"></div>
     </div>
-
     <div class="panel">
       <h2>Sequence</h2>
+      <div class="toolbar">
+        <button class="btn" id="clear-seq-btn" title="Clear all blocks">Clear</button>
+        <button class="btn" id="export-btn" title="Copy sequence JSON">Export</button>
+        <button class="btn" id="import-btn" title="Paste sequence JSON">Import</button>
+      </div>
       <ul id="sequence"></ul>
     </div>
-
     <div class="panel">
       <h2>Test Fight</h2>
       <div id="stage-wrap">
-        <canvas id="stage" width="340" height="380"></canvas>
+        <canvas id="stage" width="340" height="400"></canvas>
         <div class="hpbar-wrap">
           <div class="hpbar-label"><span>SOUL</span><span id="hp-text">100/100</span></div>
           <div class="hpbar"><div class="hpbar-fill" id="hp-fill" style="width:100%"></div></div>
@@ -213,7 +199,6 @@
     </div>
   </div>
 </div>
-
 <script>
 (function(){
   "use strict";
@@ -223,78 +208,130 @@
     {value:"square", label:"Square"},
     {value:"triangle", label:"Triangle"},
     {value:"diamond", label:"Diamond"},
+    {value:"heart", label:"Heart"},
+    {value:"star", label:"Star"},
+    {value:"cross", label:"Cross"},
   ];
 
-  // ---------- Block definitions ----------
   const BLOCK_DEFS = {
     wait: {
       label: "Wait", color: "#a78bfa", group: "Flow",
       desc: "Pause before the next block",
-      fields: [{key:"duration", label:"Seconds", type:"number", def:1, min:0.2, max:10, step:0.1}],
+      fields: [{key:"duration", label:"Seconds", type:"number", def:1, min:0.1, max:12, step:0.1}],
     },
     telegraph: {
       label: "Telegraph", color: "#ffd23f", group: "Flow",
-      desc: "Flash a warning before an attack",
-      fields: [{key:"duration", label:"Seconds", type:"number", def:0.8, min:0.2, max:5, step:0.1}],
+      desc: "Flash the arena border as a warning",
+      fields: [{key:"duration", label:"Seconds", type:"number", def:0.7, min:0.15, max:4, step:0.05}],
     },
     move_boss: {
       label: "Move Boss", color: "#5ec8ff", group: "Flow",
-      desc: "Slide the boss to a new position",
+      desc: "Slide the boss to a new horizontal position",
       fields: [
         {key:"targetPercent", label:"Position %", type:"number", def:50, min:0, max:100, step:5},
-        {key:"duration", label:"Seconds", type:"number", def:1, min:0.2, max:5, step:0.1},
+        {key:"duration", label:"Seconds", type:"number", def:0.9, min:0.15, max:5, step:0.1},
       ],
+    },
+    clear_bullets: {
+      label: "Clear Bullets", color: "#ff7eb9", group: "Flow",
+      desc: "Destroy every bullet on screen",
+      fields: [],
+    },
+    shake: {
+      label: "Screen Shake", color: "#ff7eb9", group: "Flow",
+      desc: "Camera shake for impact",
+      fields: [
+        {key:"intensity", label:"Intensity", type:"number", def:6, min:1, max:18, step:1},
+        {key:"duration", label:"Seconds", type:"number", def:0.4, min:0.1, max:2, step:0.05},
+      ],
+    },
+    flash: {
+      label: "Screen Flash", color: "#ff7eb9", group: "Flow",
+      desc: "Brief full-screen flash",
+      fields: [
+        {key:"duration", label:"Seconds", type:"number", def:0.18, min:0.05, max:1, step:0.02},
+        {key:"color", label:"Color", type:"select", def:"white", options:[
+          {value:"white",label:"White"},{value:"yellow",label:"Yellow"},
+          {value:"red",label:"Red"},{value:"pink",label:"Pink"}
+        ]},
+      ],
+    },
+    slowmo: {
+      label: "Slow-Mo", color: "#ff7eb9", group: "Flow",
+      desc: "Slow the entire fight for a moment",
+      fields: [
+        {key:"factor", label:"Speed %", type:"number", def:40, min:15, max:80, step:5},
+        {key:"duration", label:"Seconds", type:"number", def:1.2, min:0.3, max:4, step:0.1},
+      ],
+    },
+    arena_shrink: {
+      label: "Arena Shrink", color: "#ff7eb9", group: "Flow",
+      desc: "Temporarily shrink the playable box",
+      fields: [
+        {key:"scale", label:"Size %", type:"number", def:70, min:45, max:95, step:5},
+        {key:"duration", label:"Seconds", type:"number", def:3, min:1, max:10, step:0.5},
+      ],
+    },
+    repeat_start: {
+      label: "Repeat", color: "#6ee7a0", group: "Flow",
+      desc: "Repeat the following blocks N times",
+      fields: [{key:"count", label:"Times", type:"number", def:2, min:2, max:12, step:1}],
+    },
+    repeat_end: {
+      label: "End Repeat", color: "#6ee7a0", group: "Flow",
+      desc: "Marks the end of a repeat block",
+      fields: [],
     },
     spread: {
       label: "Spread Shot", color: "#ff5c5c", group: "Attacks",
       desc: "Fan of bullets across the top",
       fields: [
-        {key:"count", label:"Bullets", type:"number", def:8, min:2, max:24, step:1},
-        {key:"speed", label:"Speed", type:"number", def:130, min:40, max:320, step:10},
-        {key:"duration", label:"Seconds", type:"number", def:2.2, min:0.5, max:6, step:0.1},
+        {key:"count", label:"Bullets", type:"number", def:8, min:2, max:28, step:1},
+        {key:"speed", label:"Speed", type:"number", def:130, min:40, max:340, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:2.2, min:0.4, max:7, step:0.1},
         {key:"shape", label:"Shape", type:"select", def:"circle", options: SHAPE_OPTS},
       ],
     },
     aimed: {
       label: "Aimed Shot", color: "#ff5c5c", group: "Attacks",
-      desc: "Waves aimed at your position",
+      desc: "Waves aimed at your current position",
       fields: [
-        {key:"waves", label:"Waves", type:"number", def:4, min:1, max:10, step:1},
-        {key:"speed", label:"Speed", type:"number", def:170, min:60, max:340, step:10},
-        {key:"gap", label:"Wave gap (s)", type:"number", def:0.45, min:0.1, max:2, step:0.05},
-        {key:"duration", label:"Seconds", type:"number", def:2.6, min:0.5, max:8, step:0.1},
+        {key:"waves", label:"Waves", type:"number", def:4, min:1, max:12, step:1},
+        {key:"speed", label:"Speed", type:"number", def:170, min:50, max:360, step:10},
+        {key:"gap", label:"Wave gap (s)", type:"number", def:0.4, min:0.08, max:2, step:0.05},
+        {key:"duration", label:"Seconds", type:"number", def:2.6, min:0.5, max:9, step:0.1},
         {key:"shape", label:"Shape", type:"select", def:"triangle", options: SHAPE_OPTS},
       ],
     },
     wall: {
       label: "Wall Attack", color: "#ff5c5c", group: "Attacks",
-      desc: "A wall with a gap to dodge through",
+      desc: "A solid wall with a gap to slip through",
       fields: [
-        {key:"gapPos", label:"Gap % (0-100)", type:"number", def:50, min:0, max:100, step:5},
-        {key:"gapSize", label:"Gap width", type:"number", def:70, min:30, max:200, step:10},
-        {key:"speed", label:"Speed", type:"number", def:110, min:40, max:280, step:10},
-        {key:"duration", label:"Seconds", type:"number", def:2.6, min:0.5, max:6, step:0.1},
+        {key:"gapPos", label:"Gap %", type:"number", def:50, min:0, max:100, step:5},
+        {key:"gapSize", label:"Gap width", type:"number", def:70, min:28, max:200, step:5},
+        {key:"speed", label:"Speed", type:"number", def:110, min:40, max:300, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:2.5, min:0.5, max:7, step:0.1},
         {key:"shape", label:"Shape", type:"select", def:"square", options: SHAPE_OPTS},
       ],
     },
     moving_wall: {
       label: "Sweeping Wall", color: "#ff5c5c", group: "Attacks",
-      desc: "A wall whose gap drifts side to side",
+      desc: "Wall whose gap drifts side to side",
       fields: [
-        {key:"gapSize", label:"Gap width", type:"number", def:80, min:30, max:200, step:10},
-        {key:"oscSpeed", label:"Drift speed", type:"number", def:2, min:0.5, max:6, step:0.5},
-        {key:"speed", label:"Fall speed", type:"number", def:100, min:40, max:260, step:10},
-        {key:"duration", label:"Seconds", type:"number", def:3, min:0.5, max:8, step:0.1},
+        {key:"gapSize", label:"Gap width", type:"number", def:78, min:28, max:200, step:5},
+        {key:"oscSpeed", label:"Drift speed", type:"number", def:2.2, min:0.4, max:7, step:0.2},
+        {key:"speed", label:"Fall speed", type:"number", def:100, min:40, max:280, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:3.2, min:0.6, max:9, step:0.1},
         {key:"shape", label:"Shape", type:"select", def:"square", options: SHAPE_OPTS},
       ],
     },
     rain: {
       label: "Rain", color: "#ff5c5c", group: "Attacks",
-      desc: "Random bullets falling over time",
+      desc: "Random bullets raining down over time",
       fields: [
-        {key:"rate", label:"Bullets/sec", type:"number", def:4, min:1, max:14, step:1},
-        {key:"speed", label:"Speed", type:"number", def:120, min:40, max:280, step:10},
-        {key:"duration", label:"Seconds", type:"number", def:3, min:0.5, max:8, step:0.1},
+        {key:"rate", label:"Bullets/sec", type:"number", def:5, min:1, max:18, step:1},
+        {key:"speed", label:"Speed", type:"number", def:120, min:40, max:300, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:3, min:0.5, max:10, step:0.1},
         {key:"shape", label:"Shape", type:"select", def:"diamond", options: SHAPE_OPTS},
       ],
     },
@@ -302,9 +339,9 @@
       label: "Ring Burst", color: "#ff5c5c", group: "Attacks",
       desc: "Bullets burst outward from the boss",
       fields: [
-        {key:"count", label:"Directions", type:"number", def:10, min:3, max:24, step:1},
-        {key:"speed", label:"Speed", type:"number", def:110, min:40, max:260, step:10},
-        {key:"duration", label:"Seconds", type:"number", def:2.4, min:0.5, max:6, step:0.1},
+        {key:"count", label:"Directions", type:"number", def:12, min:3, max:28, step:1},
+        {key:"speed", label:"Speed", type:"number", def:115, min:40, max:280, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:2.4, min:0.5, max:7, step:0.1},
         {key:"shape", label:"Shape", type:"select", def:"circle", options: SHAPE_OPTS},
       ],
     },
@@ -312,11 +349,11 @@
       label: "Spiral", color: "#ff5c5c", group: "Attacks",
       desc: "Rotating streams of bullets",
       fields: [
-        {key:"arms", label:"Arms", type:"number", def:3, min:1, max:8, step:1},
-        {key:"rate", label:"Ticks/sec", type:"number", def:6, min:2, max:16, step:1},
-        {key:"rotSpeed", label:"Spin (deg/s)", type:"number", def:120, min:20, max:360, step:10},
-        {key:"speed", label:"Speed", type:"number", def:100, min:40, max:240, step:10},
-        {key:"duration", label:"Seconds", type:"number", def:3, min:0.5, max:8, step:0.1},
+        {key:"arms", label:"Arms", type:"number", def:3, min:1, max:10, step:1},
+        {key:"rate", label:"Ticks/sec", type:"number", def:7, min:2, max:18, step:1},
+        {key:"rotSpeed", label:"Spin (deg/s)", type:"number", def:130, min:15, max:420, step:10},
+        {key:"speed", label:"Speed", type:"number", def:105, min:40, max:260, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:3.2, min:0.6, max:10, step:0.1},
         {key:"shape", label:"Shape", type:"select", def:"diamond", options: SHAPE_OPTS},
       ],
     },
@@ -324,38 +361,150 @@
       label: "Homing Shot", color: "#ff5c5c", group: "Attacks",
       desc: "Slow bullets that curve toward you",
       fields: [
-        {key:"count", label:"Bullets", type:"number", def:5, min:1, max:12, step:1},
-        {key:"gap", label:"Gap (s)", type:"number", def:0.5, min:0.1, max:2, step:0.05},
-        {key:"speed", label:"Speed", type:"number", def:90, min:30, max:200, step:10},
-        {key:"turnRate", label:"Turn (deg/s)", type:"number", def:70, min:10, max:220, step:10},
-        {key:"duration", label:"Seconds", type:"number", def:3, min:0.5, max:8, step:0.1},
+        {key:"count", label:"Bullets", type:"number", def:5, min:1, max:14, step:1},
+        {key:"gap", label:"Gap (s)", type:"number", def:0.45, min:0.1, max:2, step:0.05},
+        {key:"speed", label:"Speed", type:"number", def:85, min:25, max:200, step:5},
+        {key:"turnRate", label:"Turn (deg/s)", type:"number", def:75, min:10, max:240, step:5},
+        {key:"duration", label:"Seconds", type:"number", def:3.2, min:0.6, max:10, step:0.1},
+        {key:"shape", label:"Shape", type:"select", def:"heart", options: SHAPE_OPTS},
+      ],
+    },
+    laser: {
+      label: "Laser Beam", color: "#ff9f43", group: "Attacks",
+      desc: "A thick beam that sweeps or holds",
+      fields: [
+        {key:"mode", label:"Mode", type:"select", def:"sweep", options:[
+          {value:"sweep",label:"Sweep"},{value:"hold",label:"Hold"},{value:"vertical",label:"Vertical"}
+        ]},
+        {key:"width", label:"Width", type:"number", def:22, min:10, max:50, step:2},
+        {key:"speed", label:"Sweep speed", type:"number", def:90, min:30, max:220, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:2.4, min:0.5, max:7, step:0.1},
+      ],
+    },
+    expanding_ring: {
+      label: "Expanding Rings", color: "#ff9f43", group: "Attacks",
+      desc: "Concentric rings that grow from the boss",
+      fields: [
+        {key:"count", label:"Rings", type:"number", def:4, min:1, max:10, step:1},
+        {key:"gap", label:"Ring gap (s)", type:"number", def:0.45, min:0.15, max:1.5, step:0.05},
+        {key:"speed", label:"Expand speed", type:"number", def:95, min:30, max:220, step:5},
+        {key:"thickness", label:"Thickness", type:"number", def:8, min:4, max:18, step:1},
+        {key:"duration", label:"Seconds", type:"number", def:3, min:0.8, max:9, step:0.1},
+      ],
+    },
+    cross: {
+      label: "Cross Burst", color: "#ff9f43", group: "Attacks",
+      desc: "Cross-shaped lines of bullets",
+      fields: [
+        {key:"density", label:"Density", type:"number", def:7, min:3, max:14, step:1},
+        {key:"speed", label:"Speed", type:"number", def:120, min:40, max:280, step:10},
+        {key:"rotate", label:"Rotate deg", type:"number", def:0, min:0, max:45, step:5},
+        {key:"duration", label:"Seconds", type:"number", def:2.3, min:0.5, max:7, step:0.1},
+        {key:"shape", label:"Shape", type:"select", def:"cross", options: SHAPE_OPTS},
+      ],
+    },
+    wave: {
+      label: "Sine Wave", color: "#ff9f43", group: "Attacks",
+      desc: "Bullets that travel in a sine wave path",
+      fields: [
+        {key:"count", label:"Streams", type:"number", def:3, min:1, max:8, step:1},
+        {key:"amp", label:"Amplitude", type:"number", def:55, min:15, max:120, step:5},
+        {key:"freq", label:"Frequency", type:"number", def:2.2, min:0.5, max:5, step:0.2},
+        {key:"speed", label:"Fall speed", type:"number", def:95, min:40, max:240, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:3, min:0.6, max:9, step:0.1},
+        {key:"shape", label:"Shape", type:"select", def:"circle", options: SHAPE_OPTS},
+      ],
+    },
+    bounce: {
+      label: "Bouncing Bullets", color: "#ff9f43", group: "Attacks",
+      desc: "Bullets that bounce off arena walls",
+      fields: [
+        {key:"count", label:"Bullets", type:"number", def:6, min:2, max:16, step:1},
+        {key:"speed", label:"Speed", type:"number", def:140, min:50, max:280, step:10},
+        {key:"bounces", label:"Max bounces", type:"number", def:4, min:1, max:10, step:1},
+        {key:"duration", label:"Seconds", type:"number", def:3.5, min:1, max:10, step:0.1},
+        {key:"shape", label:"Shape", type:"select", def:"diamond", options: SHAPE_OPTS},
+      ],
+    },
+    shotgun: {
+      label: "Shotgun Cone", color: "#ff9f43", group: "Attacks",
+      desc: "Dense cone of bullets aimed at you",
+      fields: [
+        {key:"count", label:"Bullets", type:"number", def:9, min:3, max:18, step:1},
+        {key:"spread", label:"Spread deg", type:"number", def:40, min:10, max:90, step:5},
+        {key:"speed", label:"Speed", type:"number", def:160, min:50, max:320, step:10},
+        {key:"waves", label:"Waves", type:"number", def:2, min:1, max:6, step:1},
+        {key:"gap", label:"Wave gap", type:"number", def:0.55, min:0.15, max:2, step:0.05},
+        {key:"duration", label:"Seconds", type:"number", def:2.8, min:0.6, max:8, step:0.1},
         {key:"shape", label:"Shape", type:"select", def:"triangle", options: SHAPE_OPTS},
       ],
     },
-    repeat_start: {
-      label: "Repeat", color: "#6ee7a0", group: "Flow",
-      desc: "Repeat the following blocks",
-      fields: [{key:"count", label:"Times", type:"number", def:2, min:2, max:10, step:1}],
+    cage: {
+      label: "Soul Cage", color: "#ff7eb9", group: "Special",
+      desc: "Closing walls that form a shrinking cage",
+      fields: [
+        {key:"gap", label:"Final gap", type:"number", def:90, min:40, max:180, step:10},
+        {key:"speed", label:"Close speed", type:"number", def:55, min:20, max:140, step:5},
+        {key:"duration", label:"Seconds", type:"number", def:3.5, min:1.5, max:8, step:0.1},
+        {key:"shape", label:"Shape", type:"select", def:"square", options: SHAPE_OPTS},
+      ],
     },
-    repeat_end: {
-      label: "End Repeat", color: "#6ee7a0", group: "Flow",
-      desc: "Marks the end of a repeat", fields: [],
+    orbit: {
+      label: "Orbit Burst", color: "#ff7eb9", group: "Special",
+      desc: "Bullets orbit the boss then fly outward",
+      fields: [
+        {key:"count", label:"Bullets", type:"number", def:10, min:4, max:20, step:1},
+        {key:"orbitTime", label:"Orbit (s)", type:"number", def:1.1, min:0.3, max:3, step:0.1},
+        {key:"speed", label:"Fly speed", type:"number", def:130, min:50, max:280, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:3.2, min:1, max:9, step:0.1},
+        {key:"shape", label:"Shape", type:"select", def:"star", options: SHAPE_OPTS},
+      ],
+    },
+    splitter: {
+      label: "Splitter", color: "#ff7eb9", group: "Special",
+      desc: "Bullets that split into more after a delay",
+      fields: [
+        {key:"count", label:"Initial", type:"number", def:4, min:1, max:10, step:1},
+        {key:"splitInto", label:"Split into", type:"number", def:3, min:2, max:6, step:1},
+        {key:"splitDelay", label:"Delay (s)", type:"number", def:0.9, min:0.3, max:2.5, step:0.1},
+        {key:"speed", label:"Speed", type:"number", def:100, min:40, max:220, step:10},
+        {key:"duration", label:"Seconds", type:"number", def:3.5, min:1, max:9, step:0.1},
+        {key:"shape", label:"Shape", type:"select", def:"diamond", options: SHAPE_OPTS},
+      ],
+    },
+    giga_laser: {
+      label: "Giga Laser", color: "#ff7eb9", group: "Special",
+      desc: "Massive charged beam that fills most of the arena",
+      fields: [
+        {key:"charge", label:"Charge (s)", type:"number", def:1.1, min:0.4, max:2.5, step:0.1},
+        {key:"width", label:"Width", type:"number", def:70, min:30, max:140, step:5},
+        {key:"hold", label:"Hold (s)", type:"number", def:1.4, min:0.4, max:4, step:0.1},
+        {key:"duration", label:"Seconds", type:"number", def:3.2, min:1.5, max:8, step:0.1},
+      ],
+    },
+    chaos: {
+      label: "Chaos Storm", color: "#ff7eb9", group: "Special",
+      desc: "Overlapping rain + rings + random aimed shots",
+      fields: [
+        {key:"intensity", label:"Intensity", type:"number", def:1.2, min:0.6, max:2.5, step:0.1},
+        {key:"duration", label:"Seconds", type:"number", def:4, min:1.5, max:10, step:0.1},
+        {key:"shape", label:"Shape", type:"select", def:"star", options: SHAPE_OPTS},
+      ],
     },
   };
 
-  const GROUP_ORDER = ["Flow", "Attacks"];
-
+  const GROUP_ORDER = ["Flow", "Attacks", "Special"];
   let uidCounter = 1;
+
   function makeBlock(type){
     const def = BLOCK_DEFS[type];
     const params = {};
-    def.fields.forEach(f => params[f.key] = f.def);
+    (def.fields || []).forEach(f => params[f.key] = f.def);
     return {id: uidCounter++, type, params};
   }
 
   let sequence = [];
 
-  // ---------- Palette UI ----------
   const paletteEl = document.getElementById("palette");
   GROUP_ORDER.forEach(group => {
     const groupWrap = document.createElement("div");
@@ -364,7 +513,6 @@
     gt.className = "palette-group-title";
     gt.textContent = group;
     groupWrap.appendChild(gt);
-
     Object.keys(BLOCK_DEFS).forEach(type => {
       const def = BLOCK_DEFS[type];
       if (def.group !== group || type === "repeat_end") return;
@@ -381,7 +529,6 @@
     paletteEl.appendChild(groupWrap);
   });
 
-  // ---------- Sequence UI ----------
   const seqEl = document.getElementById("sequence");
   let dragFromIndex = null;
 
@@ -390,6 +537,7 @@
     let depth = 0;
     sequence.forEach((block, idx) => {
       const def = BLOCK_DEFS[block.type];
+      if (!def) return;
       const li = document.createElement("li");
       li.className = "block " + block.type;
       li.draggable = true;
@@ -404,11 +552,13 @@
       title.style.color = def.color;
       title.textContent = def.label;
       row.appendChild(title);
+
       const rm = document.createElement("button");
       rm.className = "block-remove";
       rm.textContent = "\u00d7";
       rm.title = "Remove";
-      rm.addEventListener("click", () => {
+      rm.addEventListener("click", (e) => {
+        e.stopPropagation();
         if (block.type === "repeat_start"){
           const endIdx = findMatchingEnd(idx);
           if (endIdx !== -1) sequence.splice(endIdx, 1);
@@ -422,7 +572,7 @@
       row.appendChild(rm);
       li.appendChild(row);
 
-      if (def.fields.length){
+      if (def.fields && def.fields.length){
         const fieldsWrap = document.createElement("div");
         fieldsWrap.className = "block-fields";
         def.fields.forEach(f => {
@@ -431,7 +581,6 @@
           const lab = document.createElement("label");
           lab.textContent = f.label;
           fw.appendChild(lab);
-
           if (f.type === "select"){
             const sel = document.createElement("select");
             f.options.forEach(opt => {
@@ -474,7 +623,6 @@
         dragFromIndex = null;
         renderSequence();
       });
-
       seqEl.appendChild(li);
     });
   }
@@ -496,60 +644,99 @@
     return -1;
   }
 
-  // seed a small example sequence
   sequence = [
     makeBlock("telegraph"),
     makeBlock("spread"),
-    makeBlock("move_boss"),
     makeBlock("wait"),
-    makeBlock("ring"),
+    makeBlock("spiral"),
+    makeBlock("move_boss"),
+    makeBlock("homing"),
     makeBlock("wall"),
+    makeBlock("telegraph"),
+    makeBlock("giga_laser"),
   ];
   renderSequence();
 
-  // ---------- Battle engine ----------
+  const statusEl = document.getElementById("status-msg");
+  document.getElementById("clear-seq-btn").addEventListener("click", () => {
+    if (confirm("Clear the entire sequence?")){ sequence = []; renderSequence(); }
+  });
+  document.getElementById("export-btn").addEventListener("click", () => {
+    const data = sequence.map(b => ({type: b.type, params: b.params}));
+    const json = JSON.stringify(data, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+      statusEl.textContent = "Sequence copied to clipboard!";
+      setTimeout(() => { if (statusEl.textContent.includes("clipboard")) statusEl.textContent = ""; }, 2000);
+    }).catch(() => {
+      prompt("Copy this JSON:", json);
+    });
+  });
+  document.getElementById("import-btn").addEventListener("click", () => {
+    const raw = prompt("Paste sequence JSON:");
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (!Array.isArray(data)) throw new Error("Not an array");
+      sequence = data.map(d => {
+        const b = makeBlock(d.type);
+        if (d.params) Object.assign(b.params, d.params);
+        return b;
+      });
+      renderSequence();
+      statusEl.textContent = "Imported " + sequence.length + " blocks.";
+    } catch (err) {
+      alert("Invalid JSON: " + err.message);
+    }
+  });
+
   const canvas = document.getElementById("stage");
   const ctx = canvas.getContext("2d");
-  const BOX = {x: 20, y: 30, w: canvas.width - 40, h: canvas.height - 50};
+  const BASE_BOX = {x: 20, y: 34, w: canvas.width - 40, h: canvas.height - 56};
+  let BOX = Object.assign({}, BASE_BOX);
 
   const playBtn = document.getElementById("play-btn");
   const stopBtn = document.getElementById("stop-btn");
-  const statusEl = document.getElementById("status-msg");
   const hpFill = document.getElementById("hp-fill");
   const hpText = document.getElementById("hp-text");
 
   const keys = {};
-  window.addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; });
+  window.addEventListener("keydown", e => {
+    keys[e.key.toLowerCase()] = true;
+    if (["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase())) e.preventDefault();
+  });
   window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
 
   let game = null;
+  let fightSequence = [];
+  let lastFrame = null;
+  let shakeOffset = {x:0, y:0};
+
+  function resetHpUI(){
+    hpFill.style.width = "100%";
+    hpText.textContent = "100/100";
+  }
 
   function buildRuntime(){
+    BOX = Object.assign({}, BASE_BOX);
     return {
-      pc: 0,
-      t: 0,
-      repeatStack: [],
-      bullets: [],
-      spawnAcc: 0,
-      running: true,
-      won: false,
-      lost: false,
-      steps: 0,
-      telegraphFlash: 0,
-      bossX: BOX.x + BOX.w/2,
-      bossFrom: BOX.x + BOX.w/2,
-      bossTo: BOX.x + BOX.w/2,
-      spiralAngle: 0,
-      player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 24, r: 7, hp: 100, maxHp: 100, invuln: 0},
+      pc: 0, t: 0, repeatStack: [], bullets: [], lasers: [], rings: [], particles: [],
+      spawnAcc: 0, running: true, won: false, lost: false, steps: 0,
+      telegraphFlash: 0, bossX: BOX.x + BOX.w/2, bossFrom: BOX.x + BOX.w/2, bossTo: BOX.x + BOX.w/2,
+      spiralAngle: 0, timeScale: 1, slowmoLeft: 0, shakeLeft: 0, shakeIntensity: 0,
+      flashLeft: 0, flashColor: "white", arenaShrinkLeft: 0, arenaTargetScale: 1, currentScale: 1,
+      player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 28, r: 6.5, hp: 100, maxHp: 100, invuln: 0, hitThisFrame: false},
     };
   }
 
   function startFight(){
     if (sequence.length === 0){
       statusEl.textContent = "Add at least one block first.";
+      statusEl.className = "";
       return;
     }
+    fightSequence = JSON.parse(JSON.stringify(sequence));
     game = buildRuntime();
+    resetHpUI();
     playBtn.disabled = true;
     stopBtn.disabled = false;
     statusEl.textContent = "";
@@ -562,6 +749,7 @@
     if (game) game.running = false;
     playBtn.disabled = false;
     stopBtn.disabled = true;
+    shakeOffset = {x:0, y:0};
     if (reasonText){ statusEl.textContent = reasonText; statusEl.className = cls || ""; }
   }
 
@@ -569,7 +757,7 @@
   document.getElementById("stop-btn").addEventListener("click", () => stopFight("Stopped.", ""));
 
   function mkBullet(x, y, vx, vy, r, shape, extra){
-    const b = {x, y, vx, vy, r, shape: shape || "circle"};
+    const b = {x, y, vx, vy, r: r || 6, shape: shape || "circle", life: 12};
     if (extra) Object.assign(b, extra);
     return b;
   }
@@ -578,7 +766,7 @@
     const n = params.count;
     for (let i = 0; i < n; i++){
       const x = BOX.x + (BOX.w / (n - 1 || 1)) * i;
-      g.bullets.push(mkBullet(x, BOX.y - 4, 0, params.speed, 6, params.shape));
+      g.bullets.push(mkBullet(x, BOX.y - 6, 0, params.speed, 6, params.shape));
     }
   }
   function spawnAimedWave(g, params){
@@ -590,10 +778,10 @@
   }
   function spawnWallRow(g, gapStart, gapSize, speed, shape){
     const gapEnd = gapStart + gapSize;
-    const step = 16;
+    const step = 15;
     for (let x = BOX.x; x <= BOX.x + BOX.w; x += step){
       if (x >= gapStart && x <= gapEnd) continue;
-      g.bullets.push(mkBullet(x, BOX.y - 4, 0, speed, 6, shape));
+      g.bullets.push(mkBullet(x, BOX.y - 5, 0, speed, 5.5, shape));
     }
   }
   function spawnWall(g, params){
@@ -602,17 +790,17 @@
   }
   function spawnRainDrop(g, params){
     const x = BOX.x + Math.random() * BOX.w;
-    g.bullets.push(mkBullet(x, BOX.y - 4, 0, params.speed, 5, params.shape));
+    g.bullets.push(mkBullet(x, BOX.y - 5, 0, params.speed, 5, params.shape));
   }
   function spawnRing(g, params){
-    const cx = g.bossX, cy = BOX.y + 36;
+    const cx = g.bossX, cy = BOX.y + 30;
     for (let i = 0; i < params.count; i++){
       const ang = (360 / params.count) * i * Math.PI / 180;
-      g.bullets.push(mkBullet(cx, cy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 6, params.shape));
+      g.bullets.push(mkBullet(cx, cy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5.5, params.shape));
     }
   }
   function spawnSpiralTick(g, params){
-    const cx = g.bossX, cy = BOX.y + 20;
+    const cx = g.bossX, cy = BOX.y + 18;
     for (let i = 0; i < params.arms; i++){
       const ang = (g.spiralAngle + (360/params.arms)*i) * Math.PI / 180;
       g.bullets.push(mkBullet(cx, cy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5, params.shape));
@@ -620,43 +808,169 @@
   }
   function spawnHomingBullet(g, params){
     const sx = g.bossX, sy = BOX.y - 4;
-    const angle = (Math.random()*40 - 20) * Math.PI / 180; // slight random spread downward
-    g.bullets.push(mkBullet(sx, sy, Math.sin(angle)*params.speed, Math.cos(angle)*params.speed, 6, params.shape,
-      {homing:true, speed: params.speed, turnRate: params.turnRate}));
+    const angle = (Math.random()*36 - 18) * Math.PI / 180;
+    g.bullets.push(mkBullet(sx, sy, Math.sin(angle)*params.speed, Math.cos(angle)*params.speed, 6, params.shape, {
+      homing: true, speed: params.speed, turnRate: params.turnRate
+    }));
+  }
+  function spawnShotgunWave(g, params){
+    const px = g.player.x, py = g.player.y;
+    const sx = g.bossX, sy = BOX.y - 4;
+    const baseAng = Math.atan2(px - sx, py - sy);
+    const half = (params.spread * Math.PI/180) / 2;
+    for (let i = 0; i < params.count; i++){
+      const t = params.count === 1 ? 0.5 : i / (params.count - 1);
+      const ang = baseAng - half + t * half * 2;
+      g.bullets.push(mkBullet(sx, sy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5.5, params.shape));
+    }
+  }
+  function spawnCross(g, params){
+    const cx = g.bossX, cy = BOX.y + 28;
+    const rot = (params.rotate || 0) * Math.PI / 180;
+    const dirs = [0, Math.PI/2, Math.PI, Math.PI*1.5];
+    dirs.forEach(base => {
+      for (let i = 1; i <= params.density; i++){
+        const dist = i * 14;
+        const ang = base + rot;
+        const x = cx + Math.sin(ang) * dist;
+        const y = cy + Math.cos(ang) * dist;
+        g.bullets.push(mkBullet(x, y, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5, params.shape));
+      }
+    });
+  }
+  function spawnBounce(g, params){
+    for (let i = 0; i < params.count; i++){
+      const ang = (Math.random() * 50 - 25 + 180) * Math.PI / 180;
+      const speed = params.speed * (0.85 + Math.random()*0.3);
+      g.bullets.push(mkBullet(BOX.x + 20 + Math.random()*(BOX.w-40), BOX.y - 4,
+        Math.sin(ang)*speed, Math.cos(ang)*speed, 6, params.shape,
+        {bounce: true, bouncesLeft: params.bounces}));
+    }
+  }
+  function spawnOrbit(g, params){
+    const cx = g.bossX, cy = BOX.y + 26;
+    for (let i = 0; i < params.count; i++){
+      const ang = (360 / params.count) * i * Math.PI / 180;
+      g.bullets.push(mkBullet(cx, cy, 0, 0, 5.5, params.shape, {
+        orbit: true, orbitCx: cx, orbitCy: cy, orbitAngle: ang, orbitRadius: 28,
+        orbitSpeed: 2.8, orbitTimeLeft: params.orbitTime, flySpeed: params.speed
+      }));
+    }
+  }
+  function spawnSplitter(g, params){
+    for (let i = 0; i < params.count; i++){
+      const ang = ((i / params.count) * 60 - 30) * Math.PI / 180;
+      g.bullets.push(mkBullet(g.bossX, BOX.y - 4, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 7, params.shape, {
+        splitter: true, splitInto: params.splitInto, splitDelay: params.splitDelay, splitTimer: 0, speed: params.speed
+      }));
+    }
+  }
+  function spawnWaveStreams(g, params){
+    for (let s = 0; s < params.count; s++){
+      const baseX = BOX.x + (BOX.w / (params.count + 1)) * (s + 1);
+      g.bullets.push(mkBullet(baseX, BOX.y - 6, 0, params.speed, 5.5, params.shape, {
+        wave: true, waveAmp: params.amp, waveFreq: params.freq, wavePhase: s * 1.2, waveBaseX: baseX, waveT: 0
+      }));
+    }
   }
 
   function enterInstruction(g, block){
     if (!block) return;
-    if (block.type === "spread") spawnSpread(g, block.params);
-    if (block.type === "wall") spawnWall(g, block.params);
-    if (block.type === "ring") spawnRing(g, block.params);
-    if (block.type === "aimed") { g.aimedWavesLeft = block.params.waves - 1; g.aimedGapAcc = 0; spawnAimedWave(g, block.params); }
-    if (block.type === "homing") { g.homingLeft = block.params.count - 1; g.homingGapAcc = 0; spawnHomingBullet(g, block.params); }
-    if (block.type === "telegraph") g.telegraphFlash = block.params.duration;
-    if (block.type === "rain" || block.type === "moving_wall") g.spawnAcc = 0;
-    if (block.type === "spiral") { g.spawnAcc = 0; g.spiralAngle = 0; }
-    if (block.type === "move_boss") { g.bossFrom = g.bossX; g.bossTo = BOX.x + (block.params.targetPercent/100) * BOX.w; }
+    const p = block.params || {};
+    switch (block.type){
+      case "spread": spawnSpread(g, p); break;
+      case "wall": spawnWall(g, p); break;
+      case "ring": spawnRing(g, p); break;
+      case "aimed":
+        g.aimedWavesLeft = p.waves - 1; g.aimedGapAcc = 0; spawnAimedWave(g, p); break;
+      case "homing":
+        g.homingLeft = p.count - 1; g.homingGapAcc = 0; spawnHomingBullet(g, p); break;
+      case "telegraph": g.telegraphFlash = p.duration; break;
+      case "rain": case "moving_wall": case "chaos": g.spawnAcc = 0; break;
+      case "spiral": g.spawnAcc = 0; g.spiralAngle = 0; break;
+      case "move_boss":
+        g.bossFrom = g.bossX; g.bossTo = BOX.x + (p.targetPercent/100) * BOX.w; break;
+      case "clear_bullets": g.bullets = []; g.lasers = []; g.rings = []; break;
+      case "shake": g.shakeLeft = p.duration; g.shakeIntensity = p.intensity; break;
+      case "flash": g.flashLeft = p.duration; g.flashColor = p.color || "white"; break;
+      case "slowmo": g.timeScale = (p.factor || 40) / 100; g.slowmoLeft = p.duration; break;
+      case "arena_shrink":
+        g.arenaTargetScale = (p.scale || 70) / 100; g.arenaShrinkLeft = p.duration; g.currentScale = 1; break;
+      case "laser":
+        g.lasers.push({mode: p.mode || "sweep", width: p.width || 22, speed: p.speed || 90, t: 0, duration: p.duration || 2.4, x: BOX.x + BOX.w/2, dir: 1}); break;
+      case "expanding_ring":
+        g.ringWavesLeft = p.count; g.ringGapAcc = 0; g.ringParams = p;
+        g.rings.push({cx: g.bossX, cy: BOX.y + 28, r: 8, speed: p.speed, thickness: p.thickness, maxR: 420});
+        g.ringWavesLeft--; break;
+      case "cross": spawnCross(g, p); break;
+      case "wave": g.waveAcc = 0; g.waveParams = p; spawnWaveStreams(g, p); break;
+      case "bounce": spawnBounce(g, p); break;
+      case "shotgun":
+        g.shotgunWavesLeft = p.waves - 1; g.shotgunGapAcc = 0; spawnShotgunWave(g, p); break;
+      case "cage":
+        g.cage = {left: BOX.x - 10, right: BOX.x + BOX.w + 10, top: BOX.y - 10, bottom: BOX.y + BOX.h + 10, targetGap: p.gap, speed: p.speed, shape: p.shape, t: 0}; break;
+      case "orbit": spawnOrbit(g, p); break;
+      case "splitter": spawnSplitter(g, p); break;
+      case "giga_laser":
+        g.giga = {charge: p.charge || 1.1, hold: p.hold || 1.4, width: p.width || 70, t: 0, phase: "charge", x: g.bossX}; break;
+      case "chaos": g.chaosParams = p; g.spawnAcc = 0; break;
+    }
   }
 
-  let lastFrame = null;
   function loop(ts){
     if (!game || !game.running) return;
     if (lastFrame === null) lastFrame = ts;
-    let dt = (ts - lastFrame) / 1000;
-    dt = Math.min(dt, 0.05);
+    let rawDt = (ts - lastFrame) / 1000;
+    rawDt = Math.min(rawDt, 0.05);
     lastFrame = ts;
-
-    update(game, dt);
+    const dt = rawDt * (game.timeScale || 1);
+    update(game, dt, rawDt);
     render(game);
-
     if (game.won){ stopFight("Fight cleared!", "win"); return; }
     if (game.lost){ stopFight("You were hit too many times.", "lose"); return; }
     requestAnimationFrame(loop);
   }
 
-  function update(g, dt){
-    // player movement
-    const speed = 150;
+  function applyArenaScale(g){
+    const s = g.currentScale;
+    const cx = BASE_BOX.x + BASE_BOX.w/2;
+    const cy = BASE_BOX.y + BASE_BOX.h/2;
+    BOX.w = BASE_BOX.w * s;
+    BOX.h = BASE_BOX.h * s;
+    BOX.x = cx - BOX.w/2;
+    BOX.y = cy - BOX.h/2;
+  }
+
+  function update(g, dt, rawDt){
+    g.player.hitThisFrame = false;
+
+    if (g.slowmoLeft > 0){
+      g.slowmoLeft -= rawDt;
+      if (g.slowmoLeft <= 0) g.timeScale = 1;
+    }
+    if (g.shakeLeft > 0){
+      g.shakeLeft -= rawDt;
+      const intensity = g.shakeIntensity * (g.shakeLeft > 0 ? 1 : 0);
+      shakeOffset.x = (Math.random()-0.5) * intensity * 2;
+      shakeOffset.y = (Math.random()-0.5) * intensity * 2;
+    } else { shakeOffset.x = 0; shakeOffset.y = 0; }
+    if (g.flashLeft > 0) g.flashLeft -= rawDt;
+
+    if (g.arenaShrinkLeft > 0){
+      g.arenaShrinkLeft -= dt;
+      g.currentScale += (g.arenaTargetScale - g.currentScale) * Math.min(1, dt * 3);
+      if (g.arenaShrinkLeft <= 0){
+        g.currentScale += (1 - g.currentScale) * Math.min(1, dt * 4);
+        if (Math.abs(g.currentScale - 1) < 0.01) g.currentScale = 1;
+      }
+      applyArenaScale(g);
+    } else if (g.currentScale !== 1){
+      g.currentScale += (1 - g.currentScale) * Math.min(1, dt * 4);
+      if (Math.abs(g.currentScale - 1) < 0.01) g.currentScale = 1;
+      applyArenaScale(g);
+    }
+
+    const speed = 155;
     let dx = 0, dy = 0;
     if (keys["arrowleft"] || keys["a"]) dx -= 1;
     if (keys["arrowright"] || keys["d"]) dx += 1;
@@ -669,83 +983,135 @@
     }
     g.player.x = Math.max(BOX.x + g.player.r, Math.min(BOX.x + BOX.w - g.player.r, g.player.x));
     g.player.y = Math.max(BOX.y + g.player.r, Math.min(BOX.y + BOX.h - g.player.r, g.player.y));
-    if (g.player.invuln > 0) g.player.invuln -= dt;
+
+    if (g.player.invuln > 0) g.player.invuln -= rawDt;
     if (g.telegraphFlash > 0) g.telegraphFlash -= dt;
 
-    if (g.pc === 0 && g.t === 0 && g.steps === 0){ enterInstruction(g, sequence[0]); }
-
-    const block = sequence[g.pc];
+    if (g.pc === 0 && g.t === 0 && g.steps === 0) enterInstruction(g, fightSequence[0]);
+    const block = fightSequence[g.pc];
     if (block){
       g.t += dt;
-      const dur = block.params && block.params.duration !== undefined ? block.params.duration : 0;
+      const dur = (block.params && block.params.duration !== undefined) ? block.params.duration : 0;
+      const p = block.params || {};
 
       if (block.type === "aimed"){
         g.aimedGapAcc = (g.aimedGapAcc || 0) + dt;
-        if (g.aimedWavesLeft > 0 && g.aimedGapAcc >= block.params.gap){
-          g.aimedGapAcc = 0; g.aimedWavesLeft -= 1;
-          spawnAimedWave(g, block.params);
-        }
+        if (g.aimedWavesLeft > 0 && g.aimedGapAcc >= p.gap){ g.aimedGapAcc = 0; g.aimedWavesLeft -= 1; spawnAimedWave(g, p); }
       }
       if (block.type === "homing"){
         g.homingGapAcc = (g.homingGapAcc || 0) + dt;
-        if (g.homingLeft > 0 && g.homingGapAcc >= block.params.gap){
-          g.homingGapAcc = 0; g.homingLeft -= 1;
-          spawnHomingBullet(g, block.params);
-        }
+        if (g.homingLeft > 0 && g.homingGapAcc >= p.gap){ g.homingGapAcc = 0; g.homingLeft -= 1; spawnHomingBullet(g, p); }
+      }
+      if (block.type === "shotgun"){
+        g.shotgunGapAcc = (g.shotgunGapAcc || 0) + dt;
+        if (g.shotgunWavesLeft > 0 && g.shotgunGapAcc >= p.gap){ g.shotgunGapAcc = 0; g.shotgunWavesLeft -= 1; spawnShotgunWave(g, p); }
       }
       if (block.type === "rain"){
         g.spawnAcc += dt;
-        const interval = 1 / block.params.rate;
-        while (g.spawnAcc >= interval){ g.spawnAcc -= interval; spawnRainDrop(g, block.params); }
+        const interval = 1 / p.rate;
+        while (g.spawnAcc >= interval){ g.spawnAcc -= interval; spawnRainDrop(g, p); }
       }
       if (block.type === "spiral"){
         g.spawnAcc += dt;
-        g.spiralAngle += block.params.rotSpeed * dt;
-        const interval = 1 / block.params.rate;
-        while (g.spawnAcc >= interval){ g.spawnAcc -= interval; spawnSpiralTick(g, block.params); }
+        g.spiralAngle += p.rotSpeed * dt;
+        const interval = 1 / p.rate;
+        while (g.spawnAcc >= interval){ g.spawnAcc -= interval; spawnSpiralTick(g, p); }
       }
       if (block.type === "moving_wall"){
         g.spawnAcc += dt;
-        const interval = 0.15;
+        const interval = 0.14;
         while (g.spawnAcc >= interval){
           g.spawnAcc -= interval;
-          const frac = 0.5 + 0.5 * Math.sin(g.t * block.params.oscSpeed);
-          const gapStart = BOX.x + frac * BOX.w - block.params.gapSize/2;
-          spawnWallRow(g, gapStart, block.params.gapSize, block.params.speed, block.params.shape);
+          const frac = 0.5 + 0.5 * Math.sin(g.t * p.oscSpeed);
+          spawnWallRow(g, BOX.x + frac * BOX.w - p.gapSize/2, p.gapSize, p.speed, p.shape);
+        }
+      }
+      if (block.type === "expanding_ring" && g.ringWavesLeft > 0){
+        g.ringGapAcc = (g.ringGapAcc || 0) + dt;
+        if (g.ringGapAcc >= (g.ringParams.gap || 0.45)){
+          g.ringGapAcc = 0;
+          g.rings.push({cx: g.bossX, cy: BOX.y + 28, r: 8, speed: g.ringParams.speed, thickness: g.ringParams.thickness, maxR: 420});
+          g.ringWavesLeft--;
+        }
+      }
+      if (block.type === "wave"){
+        g.waveAcc = (g.waveAcc || 0) + dt;
+        if (g.waveAcc >= 0.22){ g.waveAcc = 0; spawnWaveStreams(g, p); }
+      }
+      if (block.type === "chaos"){
+        g.spawnAcc += dt;
+        const rate = 3.5 * (p.intensity || 1);
+        const interval = 1 / rate;
+        while (g.spawnAcc >= interval){
+          g.spawnAcc -= interval;
+          if (Math.random() < 0.55) spawnRainDrop(g, {speed: 100 + Math.random()*60, shape: p.shape});
+          else if (Math.random() < 0.5){
+            const ang = Math.random()*Math.PI*2;
+            g.bullets.push(mkBullet(g.bossX, BOX.y+24, Math.sin(ang)*110, Math.cos(ang)*110, 5, p.shape));
+          } else spawnAimedWave(g, {speed: 140, shape: p.shape});
         }
       }
       if (block.type === "move_boss"){
         const frac = Math.min(1, g.t / Math.max(0.001, dur));
         g.bossX = g.bossFrom + (g.bossTo - g.bossFrom) * frac;
       }
+      if (block.type === "cage" && g.cage){
+        const c = g.cage; c.t += dt;
+        const cx = BOX.x + BOX.w/2, cy = BOX.y + BOX.h/2;
+        const targetHalf = c.targetGap / 2;
+        c.left = Math.min(c.left + c.speed * dt, cx - targetHalf);
+        c.right = Math.max(c.right - c.speed * dt, cx + targetHalf);
+        c.top = Math.min(c.top + c.speed * dt, cy - targetHalf);
+        c.bottom = Math.max(c.bottom - c.speed * dt, cy + targetHalf);
+      }
+      if (block.type === "giga_laser" && g.giga){
+        const gl = g.giga; gl.t += dt; gl.x = g.bossX;
+        if (gl.phase === "charge" && gl.t >= gl.charge){ gl.phase = "fire"; gl.t = 0; }
+        else if (gl.phase === "fire" && gl.t >= gl.hold){ gl.phase = "done"; }
+      }
 
       const isRepeatMarker = block.type === "repeat_start" || block.type === "repeat_end";
-      const finished = isRepeatMarker ? true : g.t >= dur;
+      const isInstant = ["clear_bullets","shake","flash"].includes(block.type);
+      const finished = isRepeatMarker || isInstant ? true : g.t >= dur;
 
       if (finished){
         g.steps++;
-        if (g.steps > 800){ g.won = true; return; }
-
+        if (g.steps > 1200){ g.won = true; return; }
         if (block.type === "repeat_start"){
-          g.repeatStack.push({startIdx: g.pc + 1, remaining: block.params.count - 1});
+          g.repeatStack.push({startIdx: g.pc + 1, remaining: p.count - 1});
           g.pc += 1;
         } else if (block.type === "repeat_end"){
           const top = g.repeatStack[g.repeatStack.length - 1];
           if (top && top.remaining > 0){ top.remaining -= 1; g.pc = top.startIdx; }
           else { g.repeatStack.pop(); g.pc += 1; }
-        } else {
-          g.pc += 1;
-        }
+        } else g.pc += 1;
         g.t = 0;
-        if (g.pc < sequence.length) enterInstruction(g, sequence[g.pc]);
+        if (block.type === "cage") g.cage = null;
+        if (block.type === "giga_laser") g.giga = null;
+        if (g.pc < fightSequence.length) enterInstruction(g, fightSequence[g.pc]);
       }
     }
-    if (g.pc >= sequence.length){ g.won = true; }
+    if (g.pc >= fightSequence.length) g.won = true;
 
-    // bullets
+    g.lasers.forEach(L => {
+      L.t += dt;
+      if (L.mode === "sweep"){
+        L.x += L.dir * L.speed * dt;
+        if (L.x < BOX.x + L.width/2){ L.x = BOX.x + L.width/2; L.dir = 1; }
+        if (L.x > BOX.x + BOX.w - L.width/2){ L.x = BOX.x + BOX.w - L.width/2; L.dir = -1; }
+      } else if (L.mode === "vertical"){
+        L.x = BOX.x + BOX.w/2 + Math.sin(L.t * 1.4) * (BOX.w * 0.35);
+      } else L.x = g.bossX;
+    });
+    g.lasers = g.lasers.filter(L => L.t < L.duration);
+
+    g.rings.forEach(R => { R.r += R.speed * dt; });
+    g.rings = g.rings.filter(R => R.r < R.maxR);
+
+    const newBullets = [];
     g.bullets.forEach(b => {
       if (b.homing){
-        const desiredAng = Math.atan2(g.player.x - b.x, g.player.y - b.y); // 0 = down
+        const desiredAng = Math.atan2(g.player.x - b.x, g.player.y - b.y);
         const curAng = Math.atan2(b.vx, b.vy);
         let diff = desiredAng - curAng;
         while (diff > Math.PI) diff -= Math.PI*2;
@@ -756,70 +1122,225 @@
         b.vx = Math.sin(newAng) * b.speed;
         b.vy = Math.cos(newAng) * b.speed;
       }
-      b.x += b.vx * dt; b.y += b.vy * dt;
-    });
-    g.bullets = g.bullets.filter(b => b.x > BOX.x - 30 && b.x < BOX.x + BOX.w + 30 && b.y > BOX.y - 30 && b.y < BOX.y + BOX.h + 30);
-
-    // collisions
-    if (g.player.invuln <= 0){
-      for (const b of g.bullets){
-        const d = Math.hypot(b.x - g.player.x, b.y - g.player.y);
-        if (d < b.r + g.player.r){
-          g.player.hp -= 10;
-          g.player.invuln = 1.0;
-          hpFill.style.width = Math.max(0, g.player.hp) + "%";
-          hpText.textContent = Math.max(0, g.player.hp) + "/100";
-          if (g.player.hp <= 0) g.lost = true;
-          break;
+      if (b.orbit){
+        if (b.orbitTimeLeft > 0){
+          b.orbitTimeLeft -= dt;
+          b.orbitAngle += b.orbitSpeed * dt;
+          b.orbitRadius += 12 * dt;
+          b.x = b.orbitCx + Math.sin(b.orbitAngle) * b.orbitRadius;
+          b.y = b.orbitCy + Math.cos(b.orbitAngle) * b.orbitRadius;
+        } else {
+          const ang = b.orbitAngle;
+          b.vx = Math.sin(ang) * b.flySpeed;
+          b.vy = Math.cos(ang) * b.flySpeed;
+          b.orbit = false;
         }
+      }
+      if (b.wave){
+        b.waveT += dt;
+        b.x = b.waveBaseX + Math.sin(b.waveT * b.waveFreq + b.wavePhase) * b.waveAmp;
+        b.y += b.vy * dt;
+      } else if (!b.orbit){
+        b.x += b.vx * dt; b.y += b.vy * dt;
+      }
+      if (b.bounce && b.bouncesLeft > 0){
+        if (b.x < BOX.x + b.r){ b.x = BOX.x + b.r; b.vx = Math.abs(b.vx); b.bouncesLeft--; }
+        if (b.x > BOX.x + BOX.w - b.r){ b.x = BOX.x + BOX.w - b.r; b.vx = -Math.abs(b.vx); b.bouncesLeft--; }
+        if (b.y < BOX.y + b.r){ b.y = BOX.y + b.r; b.vy = Math.abs(b.vy); b.bouncesLeft--; }
+        if (b.y > BOX.y + BOX.h - b.r){ b.y = BOX.y + BOX.h - b.r; b.vy = -Math.abs(b.vy); b.bouncesLeft--; }
+      }
+      if (b.splitter){
+        b.splitTimer = (b.splitTimer || 0) + dt;
+        if (b.splitTimer >= b.splitDelay){
+          b.splitter = false;
+          for (let i = 0; i < b.splitInto; i++){
+            const ang = (360 / b.splitInto) * i * Math.PI / 180 + Math.random()*0.4;
+            newBullets.push(mkBullet(b.x, b.y, Math.sin(ang)*b.speed*0.9, Math.cos(ang)*b.speed*0.9, 4.5, b.shape));
+          }
+        }
+      }
+    });
+    if (newBullets.length) g.bullets.push(...newBullets);
+    g.bullets = g.bullets.filter(b => b.x > BOX.x - 40 && b.x < BOX.x + BOX.w + 40 && b.y > BOX.y - 40 && b.y < BOX.y + BOX.h + 40);
+
+    g.particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; p.vx *= 0.96; p.vy *= 0.96; });
+    g.particles = g.particles.filter(p => p.life > 0);
+
+    // FIXED collision: one hit per frame, invuln uses real time
+    if (g.player.invuln <= 0 && !g.player.hitThisFrame){
+      let hit = false;
+      for (const b of g.bullets){
+        if (Math.hypot(b.x - g.player.x, b.y - g.player.y) < b.r + g.player.r - 0.5){ hit = true; break; }
+      }
+      if (!hit){
+        for (const L of g.lasers){
+          if (L.mode === "vertical"){
+            if (Math.abs(g.player.x - L.x) < L.width/2 + g.player.r) hit = true;
+          } else {
+            if (Math.abs(g.player.x - L.x) < L.width/2 + g.player.r) hit = true;
+          }
+          if (hit) break;
+        }
+      }
+      if (!hit){
+        for (const R of g.rings){
+          const d = Math.hypot(g.player.x - R.cx, g.player.y - R.cy);
+          if (Math.abs(d - R.r) < R.thickness/2 + g.player.r){ hit = true; break; }
+        }
+      }
+      if (!hit && g.cage){
+        const c = g.cage, pr = g.player.r;
+        if (g.player.x - pr < c.left || g.player.x + pr > c.right || g.player.y - pr < c.top || g.player.y + pr > c.bottom) hit = true;
+      }
+      if (!hit && g.giga && g.giga.phase === "fire"){
+        if (Math.abs(g.player.x - g.giga.x) < g.giga.width/2 + g.player.r) hit = true;
+      }
+      if (hit){
+        g.player.hp = Math.max(0, g.player.hp - 10);
+        g.player.invuln = 0.75;
+        g.player.hitThisFrame = true;
+        for (let i = 0; i < 10; i++){
+          const ang = Math.random()*Math.PI*2, sp = 40 + Math.random()*80;
+          g.particles.push({x: g.player.x, y: g.player.y, vx: Math.cos(ang)*sp, vy: Math.sin(ang)*sp, life: 0.35 + Math.random()*0.25, color: "#ffd23f"});
+        }
+        hpFill.style.width = g.player.hp + "%";
+        hpText.textContent = g.player.hp + "/100";
+        if (g.player.hp <= 0) g.lost = true;
       }
     }
   }
 
   function drawShape(ctx, x, y, r, shape){
     ctx.beginPath();
-    if (shape === "square"){
-      ctx.rect(x - r, y - r, r*2, r*2);
-    } else if (shape === "triangle"){
-      ctx.moveTo(x, y - r*1.15);
-      ctx.lineTo(x - r, y + r*0.8);
-      ctx.lineTo(x + r, y + r*0.8);
-      ctx.closePath();
+    if (shape === "square") ctx.rect(x - r, y - r, r*2, r*2);
+    else if (shape === "triangle"){
+      ctx.moveTo(x, y - r*1.2); ctx.lineTo(x - r, y + r*0.85); ctx.lineTo(x + r, y + r*0.85); ctx.closePath();
     } else if (shape === "diamond"){
-      ctx.moveTo(x, y - r*1.2);
-      ctx.lineTo(x + r*1.2, y);
-      ctx.lineTo(x, y + r*1.2);
-      ctx.lineTo(x - r*1.2, y);
+      ctx.moveTo(x, y - r*1.25); ctx.lineTo(x + r*1.15, y); ctx.lineTo(x, y + r*1.25); ctx.lineTo(x - r*1.15, y); ctx.closePath();
+    } else if (shape === "heart"){
+      const s = r / 6;
+      ctx.moveTo(x, y + 4*s);
+      ctx.bezierCurveTo(x, y + 1.5*s, x - 5*s, y - 3*s, x - 5*s, y - 1*s);
+      ctx.bezierCurveTo(x - 5*s, y + 2*s, x, y + 4.5*s, x, y + 7*s);
+      ctx.bezierCurveTo(x, y + 4.5*s, x + 5*s, y + 2*s, x + 5*s, y - 1*s);
+      ctx.bezierCurveTo(x + 5*s, y - 3*s, x, y + 1.5*s, x, y + 4*s);
       ctx.closePath();
-    } else {
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-    }
+    } else if (shape === "star"){
+      const spikes = 5, outer = r * 1.2, inner = r * 0.5;
+      for (let i = 0; i < spikes * 2; i++){
+        const ang = (i * Math.PI / spikes) - Math.PI/2;
+        const rad = i % 2 === 0 ? outer : inner;
+        const px = x + Math.cos(ang) * rad, py = y + Math.sin(ang) * rad;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    } else if (shape === "cross"){
+      const t = r * 0.4;
+      ctx.moveTo(x - t, y - r); ctx.lineTo(x + t, y - r);
+      ctx.lineTo(x + t, y - t); ctx.lineTo(x + r, y - t);
+      ctx.lineTo(x + r, y + t); ctx.lineTo(x + t, y + t);
+      ctx.lineTo(x + t, y + r); ctx.lineTo(x - t, y + r);
+      ctx.lineTo(x - t, y + t); ctx.lineTo(x - r, y + t);
+      ctx.lineTo(x - r, y - t); ctx.lineTo(x - t, y - t);
+      ctx.closePath();
+    } else ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
 
   function render(g){
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = g.telegraphFlash > 0 && Math.floor(g.telegraphFlash * 10) % 2 === 0 ? "#ffd23f" : "#3a3552";
-    ctx.lineWidth = 3;
+    ctx.save();
+    ctx.translate(shakeOffset.x, shakeOffset.y);
+    ctx.clearRect(-20, -20, canvas.width + 40, canvas.height + 40);
+
+    const borderFlash = g.telegraphFlash > 0 && Math.floor(g.telegraphFlash * 12) % 2 === 0;
+    ctx.strokeStyle = borderFlash ? "#ffd23f" : "#3a3552";
+    ctx.lineWidth = borderFlash ? 4 : 3;
     ctx.strokeRect(BOX.x, BOX.y, BOX.w, BOX.h);
 
-    // boss marker
     ctx.fillStyle = "#5ec8ff";
-    drawShape(ctx, g.bossX, BOX.y - 14, 9, "triangle");
+    drawShape(ctx, g.bossX, BOX.y - 16, 10, "triangle");
+    ctx.globalAlpha = 0.25;
+    ctx.beginPath(); ctx.arc(g.bossX, BOX.y - 16, 16, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
 
-    // bullets
-    ctx.fillStyle = "#ff5c5c";
-    g.bullets.forEach(b => drawShape(ctx, b.x, b.y, b.r, b.shape));
+    if (g.cage){
+      const c = g.cage;
+      ctx.fillStyle = "rgba(255, 94, 92, 0.55)";
+      ctx.fillRect(BOX.x - 2, BOX.y, Math.max(0, c.left - BOX.x), BOX.h);
+      ctx.fillRect(c.right, BOX.y, Math.max(0, BOX.x + BOX.w - c.right + 2), BOX.h);
+      ctx.fillRect(BOX.x, BOX.y - 2, BOX.w, Math.max(0, c.top - BOX.y));
+      ctx.fillRect(BOX.x, c.bottom, BOX.w, Math.max(0, BOX.y + BOX.h - c.bottom + 2));
+    }
 
-    // player soul
-    ctx.fillStyle = g.player.invuln > 0 && Math.floor(g.player.invuln * 12) % 2 === 0 ? "#ffffff" : "#ffd23f";
-    ctx.beginPath();
-    ctx.arc(g.player.x, g.player.y, g.player.r, 0, Math.PI * 2);
-    ctx.fill();
+    g.lasers.forEach(L => {
+      ctx.fillStyle = "rgba(255, 159, 67, 0.75)";
+      if (L.mode === "vertical") ctx.fillRect(L.x - L.width/2, BOX.y, L.width, BOX.h);
+      else ctx.fillRect(L.x - L.width/2, BOX.y - 4, L.width, BOX.h + 8);
+      ctx.fillStyle = "rgba(255, 220, 160, 0.9)";
+      const core = L.width * 0.35;
+      if (L.mode === "vertical") ctx.fillRect(L.x - core/2, BOX.y, core, BOX.h);
+      else ctx.fillRect(L.x - core/2, BOX.y - 4, core, BOX.h + 8);
+    });
+
+    if (g.giga){
+      const gl = g.giga;
+      if (gl.phase === "charge"){
+        const pulse = 0.4 + 0.6 * Math.sin(gl.t * 18);
+        ctx.strokeStyle = `rgba(255, 126, 185, ${pulse})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(gl.x - gl.width/2, BOX.y, gl.width, BOX.h);
+        ctx.fillStyle = `rgba(255, 126, 185, ${0.15 * pulse})`;
+        ctx.fillRect(gl.x - gl.width/2, BOX.y, gl.width, BOX.h);
+      } else if (gl.phase === "fire"){
+        ctx.fillStyle = "rgba(255, 80, 140, 0.85)";
+        ctx.fillRect(gl.x - gl.width/2, BOX.y - 6, gl.width, BOX.h + 12);
+        ctx.fillStyle = "rgba(255, 220, 240, 0.95)";
+        ctx.fillRect(gl.x - gl.width*0.2, BOX.y - 6, gl.width*0.4, BOX.h + 12);
+      }
+    }
+
+    g.rings.forEach(R => {
+      ctx.strokeStyle = "rgba(255, 92, 92, 0.85)";
+      ctx.lineWidth = R.thickness;
+      ctx.beginPath(); ctx.arc(R.cx, R.cy, R.r, 0, Math.PI*2); ctx.stroke();
+    });
+
+    g.bullets.forEach(b => {
+      if (b.shape === "heart") ctx.fillStyle = "#ff7eb9";
+      else if (b.shape === "star") ctx.fillStyle = "#ffd23f";
+      else if (b.shape === "cross") ctx.fillStyle = "#a78bfa";
+      else ctx.fillStyle = "#ff5c5c";
+      drawShape(ctx, b.x, b.y, b.r, b.shape);
+    });
+
+    g.particles.forEach(p => {
+      ctx.globalAlpha = Math.max(0, p.life * 2.5);
+      ctx.fillStyle = p.color || "#ffd23f";
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    const invulnFlash = g.player.invuln > 0 && Math.floor(g.player.invuln * 14) % 2 === 0;
+    ctx.fillStyle = invulnFlash ? "#ffffff" : "#ffd23f";
+    ctx.beginPath(); ctx.arc(g.player.x, g.player.y, g.player.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = invulnFlash ? "#fff" : "rgba(255,210,63,0.5)";
+    ctx.lineWidth = 1.5; ctx.stroke();
+
+    if (g.flashLeft > 0){
+      const a = Math.min(0.7, g.flashLeft * 4);
+      const colors = {white:"255,255,255", yellow:"255,210,63", red:"255,80,80", pink:"255,126,185"};
+      const c = colors[g.flashColor] || colors.white;
+      ctx.fillStyle = `rgba(${c},${a})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.restore();
   }
 
-  // idle render
-  render({bullets: [], player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 24, r: 7, invuln: 0}, telegraphFlash: 0, bossX: BOX.x + BOX.w/2});
+  render({
+    bullets: [], lasers: [], rings: [], particles: [],
+    player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 28, r: 6.5, invuln: 0},
+    telegraphFlash: 0, bossX: BOX.x + BOX.w/2, flashLeft: 0, cage: null, giga: null
+  });
 })();
 </script>
 </body>
