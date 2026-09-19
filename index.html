@@ -1639,6 +1639,20 @@
     ctx.restore();
   }
 
+  jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # required to deploy to Pages
+      id-token: write   # required to get the OIDC token
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
   render({
     bullets: [], lasers: [], rings: [], particles: [],
     player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 28, r: 6.5, invuln: 0},
