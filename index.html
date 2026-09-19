@@ -185,6 +185,23 @@
     <div class="panel">
       <h2>Test Fight</h2>
       <div id="stage-wrap">
+        <div class="toolbar" style="justify-content:center;">
+          <div class="field"><label>Boss Shape</label>
+            <select id="boss-shape">
+              <option value="triangle">Triangle</option>
+              <option value="circle">Circle</option>
+              <option value="square">Square</option>
+              <option value="diamond">Diamond</option>
+              <option value="star">Star</option>
+            </select>
+          </div>
+          <div class="field"><label>Boss Color</label>
+            <input type="color" id="boss-color" value="#5ec8ff" style="width:44px; height:28px; padding:2px; background:var(--bg-deep); border:1px solid var(--border); border-radius:5px;">
+          </div>
+          <div class="field"><label>Boss Size</label>
+            <input type="number" id="boss-size" value="10" min="5" max="22" step="1" style="width:56px;">
+          </div>
+        </div>
         <canvas id="stage" width="340" height="400"></canvas>
         <div class="hpbar-wrap">
           <div class="hpbar-label"><span>SOUL</span><span id="hp-text">100/100</span></div>
@@ -215,6 +232,10 @@
     {value:"sword", label:"Sword"},
     {value:"axe", label:"Axe"},
     {value:"scythe", label:"Scythe"},
+    {value:"bone", label:"Bone"},
+    {value:"arrow", label:"Arrow"},
+    {value:"shield", label:"Shield"},
+    {value:"hammer", label:"Hammer"},
   ];
 
   const BLOCK_DEFS = {
@@ -505,6 +526,21 @@
   };
 
   const GROUP_ORDER = ["Flow", "Attacks", "Special"];
+  const BLUE_FIELDS = [
+    {key:"blueEnabled", label:"Blue Atk", type:"select", def:"off", options:[
+      {value:"off",label:"Off"},{value:"on",label:"On"}
+    ]},
+    {key:"bluePercent", label:"Blue %", type:"number", def:35, min:5, max:100, step:5},
+  ];
+  const BLUE_CAPABLE = ["spread","aimed","wall","moving_wall","rain","ring","spiral","homing",
+    "cross","wave","bounce","shotgun","orbit","splitter","expanding_ring","laser","giga_laser",
+    "cage","spikes"];
+  BLUE_CAPABLE.forEach(t => {
+    if (BLOCK_DEFS[t]) BLOCK_DEFS[t].fields = BLOCK_DEFS[t].fields.concat(BLUE_FIELDS);
+  });
+  function rollBlue(p){
+    return !!(p && p.blueEnabled === "on" && Math.random()*100 < (p.bluePercent != null ? p.bluePercent : 35));
+  }
   const COMBO_ALLOWED = ["spread","aimed","wall","moving_wall","rain","ring","spiral","homing",
     "laser","expanding_ring","cross","wave","bounce","shotgun","orbit","splitter","chaos",
     "move_boss","telegraph","shake","flash","slowmo","arena_shrink","clear_bullets","wait"];
@@ -809,6 +845,27 @@
   const BASE_BOX = {x: 20, y: 34, w: canvas.width - 40, h: canvas.height - 56};
   let BOX = Object.assign({}, BASE_BOX);
 
+  const bossSettings = {shape: "triangle", color: "#5ec8ff", size: 10};
+  const bossShapeSel = document.getElementById("boss-shape");
+  const bossColorInp = document.getElementById("boss-color");
+  const bossSizeInp = document.getElementById("boss-size");
+  bossShapeSel.addEventListener("change", () => { bossSettings.shape = bossShapeSel.value; render(idleState()); });
+  bossColorInp.addEventListener("input", () => { bossSettings.color = bossColorInp.value; render(idleState()); });
+  bossSizeInp.addEventListener("change", () => {
+    let v = parseFloat(bossSizeInp.value);
+    if (isNaN(v)) v = 10;
+    v = Math.max(5, Math.min(22, v));
+    bossSettings.size = v; bossSizeInp.value = v;
+    render(idleState());
+  });
+  function idleState(){
+    return {
+      bullets: [], lasers: [], rings: [], particles: [],
+      player: {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h - 28, r: 6.5, invuln: 0},
+      telegraphFlash: 0, bossX: BOX.x + BOX.w/2, flashLeft: 0, cage: null, giga: null, split: null,
+    };
+  }
+
   const playBtn = document.getElementById("play-btn");
   const stopBtn = document.getElementById("stop-btn");
   const hpFill = document.getElementById("hp-fill");
@@ -882,7 +939,7 @@
     const n = params.count;
     for (let i = 0; i < n; i++){
       const x = BOX.x + (BOX.w / (n - 1 || 1)) * i;
-      g.bullets.push(mkBullet(x, BOX.y - 6, 0, params.speed, 6, params.shape));
+      g.bullets.push(mkBullet(x, BOX.y - 6, 0, params.speed, 6, params.shape, {blue: rollBlue(params)}));
     }
   }
   function spawnAimedWave(g, params){
@@ -890,43 +947,43 @@
     const sx = g.bossX, sy = BOX.y - 4;
     const dx = px - sx, dy = py - sy;
     const len = Math.hypot(dx, dy) || 1;
-    g.bullets.push(mkBullet(sx, sy, dx/len*params.speed, dy/len*params.speed, 7, params.shape));
+    g.bullets.push(mkBullet(sx, sy, dx/len*params.speed, dy/len*params.speed, 7, params.shape, {blue: rollBlue(params)}));
   }
-  function spawnWallRow(g, gapStart, gapSize, speed, shape){
+  function spawnWallRow(g, gapStart, gapSize, params){
     const gapEnd = gapStart + gapSize;
     const step = 15;
     for (let x = BOX.x; x <= BOX.x + BOX.w; x += step){
       if (x >= gapStart && x <= gapEnd) continue;
-      g.bullets.push(mkBullet(x, BOX.y - 5, 0, speed, 5.5, shape));
+      g.bullets.push(mkBullet(x, BOX.y - 5, 0, params.speed, 5.5, params.shape, {blue: rollBlue(params)}));
     }
   }
   function spawnWall(g, params){
     const gapStart = BOX.x + (params.gapPos/100) * BOX.w - params.gapSize/2;
-    spawnWallRow(g, gapStart, params.gapSize, params.speed, params.shape);
+    spawnWallRow(g, gapStart, params.gapSize, params);
   }
   function spawnRainDrop(g, params){
     const x = BOX.x + Math.random() * BOX.w;
-    g.bullets.push(mkBullet(x, BOX.y - 5, 0, params.speed, 5, params.shape));
+    g.bullets.push(mkBullet(x, BOX.y - 5, 0, params.speed, 5, params.shape, {blue: rollBlue(params)}));
   }
   function spawnRing(g, params){
     const cx = g.bossX, cy = BOX.y + 30;
     for (let i = 0; i < params.count; i++){
       const ang = (360 / params.count) * i * Math.PI / 180;
-      g.bullets.push(mkBullet(cx, cy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5.5, params.shape));
+      g.bullets.push(mkBullet(cx, cy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5.5, params.shape, {blue: rollBlue(params)}));
     }
   }
   function spawnSpiralTick(g, params){
     const cx = g.bossX, cy = BOX.y + 18;
     for (let i = 0; i < params.arms; i++){
       const ang = (g.spiralAngle + (360/params.arms)*i) * Math.PI / 180;
-      g.bullets.push(mkBullet(cx, cy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5, params.shape));
+      g.bullets.push(mkBullet(cx, cy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5, params.shape, {blue: rollBlue(params)}));
     }
   }
   function spawnHomingBullet(g, params){
     const sx = g.bossX, sy = BOX.y - 4;
     const angle = (Math.random()*36 - 18) * Math.PI / 180;
     g.bullets.push(mkBullet(sx, sy, Math.sin(angle)*params.speed, Math.cos(angle)*params.speed, 6, params.shape, {
-      homing: true, speed: params.speed, turnRate: params.turnRate, life: 6.5
+      homing: true, speed: params.speed, turnRate: params.turnRate, life: 6.5, blue: rollBlue(params)
     }));
   }
   function spawnShotgunWave(g, params){
@@ -937,7 +994,7 @@
     for (let i = 0; i < params.count; i++){
       const t = params.count === 1 ? 0.5 : i / (params.count - 1);
       const ang = baseAng - half + t * half * 2;
-      g.bullets.push(mkBullet(sx, sy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5.5, params.shape));
+      g.bullets.push(mkBullet(sx, sy, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5.5, params.shape, {blue: rollBlue(params)}));
     }
   }
   function spawnCross(g, params){
@@ -950,7 +1007,7 @@
         const ang = base + rot;
         const x = cx + Math.sin(ang) * dist;
         const y = cy + Math.cos(ang) * dist;
-        g.bullets.push(mkBullet(x, y, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5, params.shape));
+        g.bullets.push(mkBullet(x, y, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 5, params.shape, {blue: rollBlue(params)}));
       }
     });
   }
@@ -960,7 +1017,7 @@
       const speed = params.speed * (0.85 + Math.random()*0.3);
       g.bullets.push(mkBullet(BOX.x + 20 + Math.random()*(BOX.w-40), BOX.y - 4,
         Math.sin(ang)*speed, Math.cos(ang)*speed, 6, params.shape,
-        {bounce: true, bouncesLeft: params.bounces}));
+        {bounce: true, bouncesLeft: params.bounces, blue: rollBlue(params)}));
     }
   }
   function spawnOrbit(g, params){
@@ -969,7 +1026,7 @@
       const ang = (360 / params.count) * i * Math.PI / 180;
       g.bullets.push(mkBullet(cx, cy, 0, 0, 5.5, params.shape, {
         orbit: true, orbitCx: cx, orbitCy: cy, orbitAngle: ang, orbitRadius: 28,
-        orbitSpeed: 2.8, orbitTimeLeft: params.orbitTime, flySpeed: params.speed
+        orbitSpeed: 2.8, orbitTimeLeft: params.orbitTime, flySpeed: params.speed, blue: rollBlue(params)
       }));
     }
   }
@@ -977,7 +1034,7 @@
     for (let i = 0; i < params.count; i++){
       const ang = ((i / params.count) * 60 - 30) * Math.PI / 180;
       g.bullets.push(mkBullet(g.bossX, BOX.y - 4, Math.sin(ang)*params.speed, Math.cos(ang)*params.speed, 7, params.shape, {
-        splitter: true, splitInto: params.splitInto, splitDelay: params.splitDelay, splitTimer: 0, speed: params.speed
+        splitter: true, splitInto: params.splitInto, splitDelay: params.splitDelay, splitTimer: 0, speed: params.speed, blue: rollBlue(params)
       }));
     }
   }
@@ -985,7 +1042,7 @@
     for (let s = 0; s < params.count; s++){
       const baseX = BOX.x + (BOX.w / (params.count + 1)) * (s + 1);
       g.bullets.push(mkBullet(baseX, BOX.y - 6, 0, params.speed, 5.5, params.shape, {
-        wave: true, waveAmp: params.amp, waveFreq: params.freq, wavePhase: s * 1.2, waveBaseX: baseX, waveT: 0
+        wave: true, waveAmp: params.amp, waveFreq: params.freq, wavePhase: s * 1.2, waveBaseX: baseX, waveT: 0, blue: rollBlue(params)
       }));
     }
   }
@@ -995,7 +1052,7 @@
     const gapWidth = ((p.escapeDeg || 70) * Math.PI / 180);
     g.rings.push({
       cx: g.bossX, cy: BOX.y + 28, r: 8, speed: p.speed, thickness: p.thickness, maxR: 420,
-      gapAngle, gapWidth,
+      gapAngle, gapWidth, blue: rollBlue(p),
     });
   }
   function angleInGap(ang, gapAngle, gapWidth){
@@ -1505,37 +1562,90 @@
       ctx.lineTo(x - r, y - t); ctx.lineTo(x - t, y - t);
       ctx.closePath();
     } else if (shape === "sword"){
-      ctx.moveTo(x, y - r*1.4);
-      ctx.lineTo(x + r*0.28, y - r*0.3);
-      ctx.lineTo(x + r*0.9, y - r*0.05);
-      ctx.lineTo(x + r*0.9, y + r*0.15);
-      ctx.lineTo(x + r*0.15, y + r*0.15);
-      ctx.lineTo(x + r*0.15, y + r*1.3);
-      ctx.lineTo(x - r*0.15, y + r*1.3);
-      ctx.lineTo(x - r*0.15, y + r*0.15);
-      ctx.lineTo(x - r*0.9, y + r*0.15);
-      ctx.lineTo(x - r*0.9, y - r*0.05);
-      ctx.lineTo(x - r*0.28, y - r*0.3);
+      const bw = r*0.32;
+      ctx.moveTo(x, y - r*1.6);
+      ctx.lineTo(x + bw, y - r*0.55);
+      ctx.lineTo(x + bw, y - r*0.18);
+      ctx.lineTo(x - bw, y - r*0.18);
+      ctx.lineTo(x - bw, y - r*0.55);
       ctx.closePath();
+      ctx.moveTo(x - r*0.72, y - r*0.18);
+      ctx.lineTo(x + r*0.72, y - r*0.18);
+      ctx.lineTo(x + r*0.72, y);
+      ctx.lineTo(x - r*0.72, y);
+      ctx.closePath();
+      ctx.moveTo(x - r*0.14, y);
+      ctx.lineTo(x + r*0.14, y);
+      ctx.lineTo(x + r*0.14, y + r*0.85);
+      ctx.lineTo(x - r*0.14, y + r*0.85);
+      ctx.closePath();
+      ctx.moveTo(x + r*0.2, y + r*0.85);
+      ctx.arc(x, y + r*0.85, r*0.2, 0, Math.PI * 2);
     } else if (shape === "axe"){
-      ctx.moveTo(x - r*0.12, y - r*1.3);
-      ctx.lineTo(x + r*0.12, y - r*1.3);
-      ctx.lineTo(x + r*0.12, y + r*1.3);
-      ctx.lineTo(x - r*0.12, y + r*1.3);
+      ctx.moveTo(x - r*0.13, y - r*1.35);
+      ctx.lineTo(x + r*0.13, y - r*1.35);
+      ctx.lineTo(x + r*0.13, y + r*1.35);
+      ctx.lineTo(x - r*0.13, y + r*1.35);
       ctx.closePath();
-      ctx.moveTo(x + r*0.1, y - r*1.1);
-      ctx.quadraticCurveTo(x + r*1.3, y - r*1.1, x + r*1.25, y - r*0.3);
-      ctx.quadraticCurveTo(x + r*0.9, y - r*0.15, x + r*0.1, y - r*0.5);
+      const hy = y - r*0.85;
+      ctx.moveTo(x, hy - r*0.6);
+      ctx.lineTo(x + r*1.15, hy - r*0.2);
+      ctx.lineTo(x + r*0.95, hy + r*0.6);
+      ctx.lineTo(x + r*0.13, hy + r*0.3);
+      ctx.lineTo(x + r*0.13, hy - r*0.3);
       ctx.closePath();
     } else if (shape === "scythe"){
-      ctx.moveTo(x - r*0.1, y - r*0.2);
-      ctx.lineTo(x + r*0.1, y - r*0.2);
-      ctx.lineTo(x + r*0.1, y + r*1.4);
-      ctx.lineTo(x - r*0.1, y + r*1.4);
+      ctx.moveTo(x - r*0.11, y - r*0.35);
+      ctx.lineTo(x + r*0.11, y - r*0.35);
+      ctx.lineTo(x + r*0.26, y + r*1.4);
+      ctx.lineTo(x + r*0.04, y + r*1.4);
       ctx.closePath();
-      ctx.moveTo(x, y - r*0.2);
-      ctx.quadraticCurveTo(x + r*1.3, y - r*0.6, x + r*0.9, y - r*1.5);
-      ctx.quadraticCurveTo(x + r*0.5, y - r*0.9, x, y - r*0.2);
+      const bx = x, by = y - r*0.35;
+      ctx.moveTo(bx - r*0.05, by);
+      ctx.bezierCurveTo(bx + r*1.0, by - r*0.15, bx + r*1.35, by - r*1.35, bx + r*0.45, by - r*1.75);
+      ctx.bezierCurveTo(bx + r*1.0, by - r*1.15, bx + r*0.75, by - r*0.35, bx + r*0.25, by - r*0.1);
+      ctx.closePath();
+    } else if (shape === "bone"){
+      const rodLen = r*1.7, rodW = r*0.42;
+      ctx.moveTo(x - rodLen/2, y - rodW/2);
+      ctx.lineTo(x + rodLen/2, y - rodW/2);
+      ctx.lineTo(x + rodLen/2, y + rodW/2);
+      ctx.lineTo(x - rodLen/2, y + rodW/2);
+      ctx.closePath();
+      [-1, 1].forEach(side => {
+        const ex = x + side * rodLen/2;
+        ctx.moveTo(ex + r*0.28, y - rodW*0.55);
+        ctx.arc(ex, y - rodW*0.55, r*0.28, 0, Math.PI*2);
+        ctx.moveTo(ex + r*0.28, y + rodW*0.55);
+        ctx.arc(ex, y + rodW*0.55, r*0.28, 0, Math.PI*2);
+      });
+    } else if (shape === "arrow"){
+      ctx.moveTo(x, y - r*1.3);
+      ctx.lineTo(x + r*0.55, y - r*0.25);
+      ctx.lineTo(x + r*0.18, y - r*0.25);
+      ctx.lineTo(x + r*0.18, y + r*1.2);
+      ctx.lineTo(x - r*0.18, y + r*1.2);
+      ctx.lineTo(x - r*0.18, y - r*0.25);
+      ctx.lineTo(x - r*0.55, y - r*0.25);
+      ctx.closePath();
+    } else if (shape === "shield"){
+      ctx.moveTo(x, y - r*1.2);
+      ctx.lineTo(x + r*1.0, y - r*0.75);
+      ctx.lineTo(x + r*1.0, y + r*0.15);
+      ctx.quadraticCurveTo(x + r*0.9, y + r*1.05, x, y + r*1.35);
+      ctx.quadraticCurveTo(x - r*0.9, y + r*1.05, x - r*1.0, y + r*0.15);
+      ctx.lineTo(x - r*1.0, y - r*0.75);
+      ctx.closePath();
+    } else if (shape === "hammer"){
+      ctx.moveTo(x - r*0.13, y - r*0.3);
+      ctx.lineTo(x + r*0.13, y - r*0.3);
+      ctx.lineTo(x + r*0.13, y + r*1.35);
+      ctx.lineTo(x - r*0.13, y + r*1.35);
+      ctx.closePath();
+      ctx.moveTo(x - r*0.9, y - r*1.3);
+      ctx.lineTo(x + r*0.9, y - r*1.3);
+      ctx.lineTo(x + r*0.9, y - r*0.45);
+      ctx.lineTo(x - r*0.9, y - r*0.45);
       ctx.closePath();
     } else ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -1551,10 +1661,10 @@
     ctx.lineWidth = borderFlash ? 4 : 3;
     ctx.strokeRect(BOX.x, BOX.y, BOX.w, BOX.h);
 
-    ctx.fillStyle = "#5ec8ff";
-    drawShape(ctx, g.bossX, BOX.y - 16, 10, "triangle");
+    ctx.fillStyle = bossSettings.color;
+    drawShape(ctx, g.bossX, BOX.y - bossSettings.size - 6, bossSettings.size, bossSettings.shape);
     ctx.globalAlpha = 0.25;
-    ctx.beginPath(); ctx.arc(g.bossX, BOX.y - 16, 16, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(g.bossX, BOX.y - bossSettings.size - 6, bossSettings.size + 6, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
 
     if (g.cage){
@@ -1611,7 +1721,10 @@
       if (b.shape === "heart") ctx.fillStyle = "#ff7eb9";
       else if (b.shape === "star") ctx.fillStyle = "#ffd23f";
       else if (b.shape === "cross") ctx.fillStyle = "#a78bfa";
-      else if (b.shape === "sword" || b.shape === "axe" || b.shape === "scythe") ctx.fillStyle = "#c9d3e0";
+      else if (b.shape === "sword" || b.shape === "axe" || b.shape === "scythe" || b.shape === "hammer") ctx.fillStyle = "#c9d3e0";
+      else if (b.shape === "bone") ctx.fillStyle = "#f1eef9";
+      else if (b.shape === "arrow") ctx.fillStyle = "#ff9f43";
+      else if (b.shape === "shield") ctx.fillStyle = "#6ee7a0";
       else ctx.fillStyle = "#ff5c5c";
       drawShape(ctx, b.x, b.y, b.r, b.shape);
     });
@@ -1636,26 +1749,10 @@
       ctx.fillStyle = `rgba(${c},${a})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-       ctx.restore();
+    ctx.restore();
   }
 
-  render({
-    bullets: [],
-    lasers: [],
-    rings: [],
-    particles: [],
-    player: {
-      x: BOX.x + BOX.w/2,
-      y: BOX.y + BOX.h - 28,
-      r: 6.5,
-      invuln: 0
-    },
-    telegraphFlash: 0,
-    bossX: BOX.x + BOX.w/2,
-    flashLeft: 0,
-    cage: null,
-    giga: null
-  });
+  render(idleState());
 })();
 </script>
 </body>
