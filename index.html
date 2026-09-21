@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boss Fight Maker</title>
+<title>Boss Fight Maker 2.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -36,7 +36,7 @@
       radial-gradient(ellipse 80% 50% at 50% -20%, rgba(167,139,250,0.11), transparent),
       radial-gradient(ellipse 50% 40% at 90% 100%, rgba(255,77,106,0.05), transparent);
   }
-  .wrap { max-width: 1440px; margin: 0 auto; }
+  .wrap { max-width: 1480px; margin: 0 auto; }
   header {
     display: flex; align-items: flex-end; justify-content: space-between;
     gap: 16px; flex-wrap: wrap;
@@ -50,15 +50,20 @@
     letter-spacing: 0.02em;
   }
   h1 span { color: var(--gold); }
-  .subtitle { color: var(--muted); font-size: 13px; max-width: 580px; line-height: 1.5; }
+  .subtitle { color: var(--muted); font-size: 13px; max-width: 620px; line-height: 1.5; }
+  .badge {
+    display: inline-block; background: var(--gold); color: #1a1608;
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+    vertical-align: middle; margin-left: 8px; letter-spacing: 0.04em;
+  }
 
   .layout {
     display: grid;
-    grid-template-columns: 265px 1fr 385px;
+    grid-template-columns: 270px 1fr 390px;
     gap: 15px;
     align-items: start;
   }
-  @media (max-width: 1150px) { .layout { grid-template-columns: 1fr; } }
+  @media (max-width: 1180px) { .layout { grid-template-columns: 1fr; } }
 
   .panel {
     background: var(--panel);
@@ -109,7 +114,7 @@
   .toolbar .btn { padding: 5px 10px; font-size: 11.5px; }
 
   #sequence {
-    list-style: none; min-height: 60px; max-height: 66vh; overflow-y: auto;
+    list-style: none; min-height: 60px; max-height: 68vh; overflow-y: auto;
   }
   #sequence:empty::after {
     content: "Add blocks from the left.";
@@ -128,8 +133,8 @@
   .block.flow { border-left-color: var(--violet); }
   .block.attack { border-left-color: var(--red); }
   .block.special { border-left-color: var(--pink); }
-  .block.effect { border-left-color: var(--blue); }
   .block.spamton { border-left-color: var(--orange); }
+  .block.knight { border-left-color: #c4b5fd; }
   .block.dragging { opacity: 0.4; }
   .block-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .block-title { font-weight: 700; font-size: 12.5px; }
@@ -148,8 +153,8 @@
     background: var(--bg); border: 1px solid var(--border); color: var(--text);
     border-radius: 5px; padding: 3px 5px; font-size: 11.5px; font-family: var(--font-b);
   }
-  .field input { width: 60px; }
-  .field select { width: 90px; }
+  .field input { width: 62px; }
+  .field select { width: 92px; }
   .indent { margin-left: 16px; }
 
   #stage-wrap { display: flex; flex-direction: column; align-items: center; gap: 9px; }
@@ -205,8 +210,8 @@
 <div class="wrap">
   <header>
     <div>
-      <h1>Boss Fight <span>Maker</span></h1>
-      <div class="subtitle">Cinematic multi-stage attacks • Board splits • Crystal storms • Knife dances • Spamton chaos. Build it, then dodge it.</div>
+      <h1>Boss Fight <span>Maker</span><span class="badge">2.0</span></h1>
+      <div class="subtitle">Cinematic multi-stage attacks • Real board splits • Reverse-and-shatter stars • Tracking swords • Rotating slashes • Spamton chaos. Build it, then dodge it.</div>
     </div>
   </header>
 
@@ -271,6 +276,10 @@
 (function(){
   "use strict";
 
+  // ═══════════════════════════════════════════════════════════════
+  //  BOSS FIGHT MAKER 2.0  –  cinematic attack engine
+  // ═══════════════════════════════════════════════════════════════
+
   const SHAPE_OPTS = [
     {value:"circle",label:"Circle"},{value:"square",label:"Square"},{value:"triangle",label:"Triangle"},
     {value:"diamond",label:"Diamond"},{value:"heart",label:"Heart"},{value:"star",label:"Star"},
@@ -289,7 +298,7 @@
     },
     telegraph: {
       label:"Telegraph", color:"#ffd23f", group:"Flow", cat:"flow",
-      desc:"Flash arena border",
+      desc:"Flash arena border – classic warning",
       fields:[{key:"duration",label:"Seconds",type:"number",def:0.55,min:0.15,max:2.5,step:0.05}]
     },
     move_boss: {
@@ -302,11 +311,11 @@
     },
     clear_bullets: {
       label:"Clear Bullets", color:"#ff7eb9", group:"Flow", cat:"effect",
-      desc:"Destroy all projectiles", fields:[]
+      desc:"Destroy all projectiles instantly", fields:[]
     },
     shake: {
       label:"Screen Shake", color:"#ff7eb9", group:"Flow", cat:"effect",
-      desc:"Camera impact",
+      desc:"Camera impact hit",
       fields:[
         {key:"intensity",label:"Intensity",type:"number",def:7,min:1,max:18,step:1},
         {key:"duration",label:"Seconds",type:"number",def:0.35,min:0.1,max:1.8,step:0.05}
@@ -349,69 +358,80 @@
       desc:"End of repeat section", fields:[]
     },
 
-    // ── CORE ATTACKS (fixed) ──
-    crystal_barrage: {
-      label:"Crystal Barrage", color:"#ff4d6a", group:"Attacks", cat:"attack",
-      desc:"Fires crystals at you → pause → reverse → flash & explode into shards",
+    // ── KNIGHT-STYLE SIGNATURE ATTACKS ──
+    star_barrage: {
+      label:"Star Barrage", color:"#ffd23f", group:"Knight", cat:"knight",
+      desc:"Stars fire at you → pause → reverse → flash & explode into shards (Roaring Knight classic)",
       fields:[
-        {key:"rate",label:"Crystals/s",type:"number",def:4.5,min:1.5,max:10,step:0.5},
-        {key:"fireTime",label:"Fire time",type:"number",def:1.8,min:0.8,max:4,step:0.1},
-        {key:"speed",label:"Speed",type:"number",def:130,min:50,max:260,step:10},
-        {key:"shards",label:"Shards each",type:"number",def:6,min:3,max:10,step:1},
-        {key:"duration",label:"Seconds",type:"number",def:5.2,min:3,max:10,step:0.1},
-        {key:"shape",label:"Shape",type:"select",def:"crystal",options:SHAPE_OPTS}
+        {key:"rate",label:"Stars/s",type:"number",def:4.2,min:1.5,max:10,step:0.5},
+        {key:"fireTime",label:"Fire time",type:"number",def:1.9,min:0.8,max:4,step:0.1},
+        {key:"speed",label:"Speed",type:"number",def:125,min:50,max:260,step:10},
+        {key:"shards",label:"Shards each",type:"number",def:6,min:3,max:12,step:1},
+        {key:"duration",label:"Seconds",type:"number",def:5.4,min:3,max:12,step:0.1},
+        {key:"shape",label:"Shape",type:"select",def:"star",options:SHAPE_OPTS}
       ]
     },
-    knife_dance: {
-      label:"Knife Dance", color:"#ff4d6a", group:"Attacks", cat:"attack",
-      desc:"Swords track you horizontally, pull back, then fire at last position. Repeats.",
+    tracking_swords: {
+      label:"Tracking Swords", color:"#e2e8f0", group:"Knight", cat:"knight",
+      desc:"Swords lock onto SOUL, pull back, then fire at last position. One-by-one or circle.",
       fields:[
-        {key:"count",label:"Swords",type:"number",def:5,min:2,max:10,step:1},
-        {key:"lockTime",label:"Lock (s)",type:"number",def:0.85,min:0.4,max:1.8,step:0.05},
-        {key:"pullTime",label:"Pull (s)",type:"number",def:0.35,min:0.15,max:0.8,step:0.05},
-        {key:"gap",label:"Gap between",type:"number",def:0.55,min:0.2,max:1.5,step:0.05},
-        {key:"duration",label:"Seconds",type:"number",def:5.5,min:2.5,max:12,step:0.1},
+        {key:"count",label:"Swords",type:"number",def:5,min:2,max:12,step:1},
+        {key:"mode",label:"Mode",type:"select",def:"sequential",options:[
+          {value:"sequential",label:"One by one"},{value:"circle",label:"Circle around"}
+        ]},
+        {key:"lockTime",label:"Lock (s)",type:"number",def:0.9,min:0.35,max:2,step:0.05},
+        {key:"pullTime",label:"Pull (s)",type:"number",def:0.32,min:0.12,max:0.8,step:0.05},
+        {key:"gap",label:"Gap between",type:"number",def:0.5,min:0.15,max:1.4,step:0.05},
+        {key:"duration",label:"Seconds",type:"number",def:5.8,min:2.5,max:14,step:0.1},
         {key:"shape",label:"Shape",type:"select",def:"knife",options:SHAPE_OPTS}
       ]
     },
-    board_rend: {
-      label:"Board Rend", color:"#5ec8ff", group:"Attacks", cat:"attack",
-      desc:"Board physically splits & moves apart. Dense big bullets from the gap.",
+    box_splitter: {
+      label:"Box Splitter", color:"#5ec8ff", group:"Knight", cat:"knight",
+      desc:"Board physically splits & slides apart. Dense bullets pour from the crack.",
       fields:[
-        {key:"cuts",label:"Cuts",type:"number",def:3,min:1,max:5,step:1},
+        {key:"cuts",label:"Cuts",type:"number",def:3,min:1,max:6,step:1},
         {key:"orient",label:"Orient",type:"select",def:"random",options:[
-          {value:"h",label:"Horizontal"},{value:"v",label:"Vertical"},{value:"random",label:"Random"}
+          {value:"h",label:"Horizontal"},{value:"v",label:"Vertical"},
+          {value:"diag",label:"Diagonal"},{value:"random",label:"Random"}
         ]},
-        {key:"gapTime",label:"Gap time",type:"number",def:1.1,min:0.4,max:2.5,step:0.1},
-        {key:"bulletRate",label:"Bullets/s",type:"number",def:11,min:4,max:20,step:1},
-        {key:"duration",label:"Seconds",type:"number",def:6.5,min:3,max:14,step:0.2},
+        {key:"gapTime",label:"Gap time",type:"number",def:1.15,min:0.4,max:2.8,step:0.1},
+        {key:"bulletRate",label:"Bullets/s",type:"number",def:12,min:4,max:22,step:1},
+        {key:"duration",label:"Seconds",type:"number",def:7,min:3,max:16,step:0.2},
         {key:"shape",label:"Shape",type:"select",def:"shard",options:SHAPE_OPTS}
       ]
     },
-    sword_corridor: {
-      label:"Sword Corridor", color:"#ff4d6a", group:"Attacks", cat:"attack",
-      desc:"Top & bottom sword lines with waving gap. At end they telegraph, pull back & fire.",
+    sword_tunnel: {
+      label:"Sword Tunnel", color:"#c9d3e0", group:"Knight", cat:"knight",
+      desc:"Top & bottom sword walls with a waving gap. At the end they telegraph, pull & fire.",
       fields:[
-        {key:"waveAmp",label:"Wave amp",type:"number",def:38,min:15,max:70,step:5},
-        {key:"waveSpeed",label:"Wave speed",type:"number",def:1.8,min:0.6,max:4,step:0.1},
-        {key:"holdTime",label:"Hold (s)",type:"number",def:2.8,min:1.2,max:6,step:0.1},
-        {key:"duration",label:"Seconds",type:"number",def:5.5,min:3,max:11,step:0.1},
+        {key:"waveAmp",label:"Wave amp",type:"number",def:42,min:12,max:75,step:5},
+        {key:"waveSpeed",label:"Wave speed",type:"number",def:1.9,min:0.5,max:4.5,step:0.1},
+        {key:"holdTime",label:"Hold (s)",type:"number",def:2.9,min:1,max:7,step:0.1},
+        {key:"gapNarrow",label:"Narrow gap",type:"select",def:"off",options:[
+          {value:"off",label:"Normal"},{value:"on",label:"Narrow (deadly)"}
+        ]},
+        {key:"duration",label:"Seconds",type:"number",def:5.8,min:3,max:12,step:0.1},
         {key:"shape",label:"Shape",type:"select",def:"blade",options:SHAPE_OPTS}
       ]
     },
-    sanguine_slash: {
-      label:"Sanguine Slash", color:"#ff4d6a", group:"Attacks", cat:"attack",
-      desc:"Long spinning line appears at your position, brakes, then cuts only when stopped.",
+    rotating_slash: {
+      label:"Rotating Slash", color:"#ff4d6a", group:"Knight", cat:"knight",
+      desc:"Spinning red lines appear at SOUL, brake, then freeze into white damaging cuts. Escalating count.",
       fields:[
-        {key:"cycles",label:"Cycles",type:"number",def:4,min:2,max:7,step:1},
-        {key:"gap",label:"Gap (s)",type:"number",def:0.7,min:0.35,max:1.5,step:0.05},
-        {key:"width",label:"Width",type:"number",def:16,min:8,max:28,step:2},
-        {key:"spinTime",label:"Spin time",type:"number",def:0.55,min:0.25,max:1.2,step:0.05},
-        {key:"duration",label:"Seconds",type:"number",def:5,min:2.5,max:10,step:0.1}
+        {key:"cycles",label:"Cycles",type:"number",def:6,min:2,max:10,step:1},
+        {key:"startLines",label:"Start lines",type:"number",def:1,min:1,max:4,step:1},
+        {key:"gap",label:"Gap (s)",type:"number",def:0.65,min:0.3,max:1.4,step:0.05},
+        {key:"width",label:"Width",type:"number",def:15,min:8,max:26,step:1},
+        {key:"spinTime",label:"Spin time",type:"number",def:0.55,min:0.25,max:1.3,step:0.05},
+        {key:"finale",label:"Finale spiral",type:"select",def:"off",options:[
+          {value:"off",label:"Off"},{value:"on",label:"On (Phase 3)"}
+        ]},
+        {key:"duration",label:"Seconds",type:"number",def:6.5,min:3,max:14,step:0.1}
       ]
     },
 
-    // ── MORE ATTACKS ──
+    // ── CLASSIC / UTILITY ATTACKS ──
     shatter_ring: {
       label:"Shatter Ring", color:"#ff9f43", group:"Attacks", cat:"attack",
       desc:"Expanding rings that fracture into directed shards",
@@ -608,18 +628,18 @@
 
     // ── SPAMTON NEO ──
     pipis_barrage: {
-      label:"Pipis Barrage", color:"#ff9f43", group:"Spamton", cat:"spamton",
-      desc:"Blue bouncing Pipis that explode into tiny heads on impact with walls",
+      label:"Pipis Barrage", color:"#5ec8ff", group:"Spamton", cat:"spamton",
+      desc:"Blue bouncing Pipis that explode into tiny heads on wall contact",
       fields:[
         {key:"count",label:"Pipis",type:"number",def:5,min:2,max:10,step:1},
         {key:"speed",label:"Speed",type:"number",def:140,min:50,max:260,step:10},
         {key:"heads",label:"Heads each",type:"number",def:7,min:3,max:12,step:1},
-        {key:"duration",label:"Seconds",type:"number",def:4,min:2,max:9,step:0.1}
+        {key:"duration",label:"Seconds",type:"number",def:4.2,min:2,max:9,step:0.1}
       ]
     },
     flying_heads: {
       label:"Flying Heads", color:"#ff9f43", group:"Spamton", cat:"spamton",
-      desc:"Spamton heads launch lane-by-lane and fire bullets while moving",
+      desc:"Spamton heads launch lane-by-lane and fire while moving",
       fields:[
         {key:"count",label:"Heads",type:"number",def:4,min:2,max:8,step:1},
         {key:"gap",label:"Gap (s)",type:"number",def:0.55,min:0.25,max:1.3,step:0.05},
@@ -684,7 +704,7 @@
     {key:"blueEnabled",label:"Blue Atk",type:"select",def:"off",options:[{value:"off",label:"Off"},{value:"on",label:"On"}]},
     {key:"bluePercent",label:"Blue %",type:"number",def:30,min:5,max:100,step:5}
   ];
-  ["crystal_barrage","knife_dance","shatter_ring","orbit_cascade","wall","sweeping_wall","spiral",
+  ["star_barrage","tracking_swords","shatter_ring","orbit_cascade","wall","sweeping_wall","spiral",
    "ring_burst","rain","shotgun","bounce","chaos","laser","giga_laser","cage","rising_spikes",
    "pipis_barrage","flying_heads","mail_storm"].forEach(t => {
     if (BLOCK_DEFS[t]) BLOCK_DEFS[t].fields = BLOCK_DEFS[t].fields.concat(BLUE_FIELDS);
@@ -700,8 +720,8 @@
     return Math.max(0.3, Number(p.duration) || 1);
   }
 
-  const GROUP_ORDER = ["Flow","Attacks","Spamton","Special"];
-  const COMBO_ALLOWED = Object.keys(BLOCK_DEFS).filter(t => 
+  const GROUP_ORDER = ["Flow","Knight","Attacks","Spamton","Special"];
+  const COMBO_ALLOWED = Object.keys(BLOCK_DEFS).filter(t =>
     !["repeat_start","repeat_end","combo"].includes(t)
   );
 
@@ -902,18 +922,19 @@
     return -1;
   }
 
-  // Default sequence showcasing the fixed attacks
+  // Default showcase sequence – the signature 2.0 attacks
   sequence = [
     makeBlock("telegraph"),
-    makeBlock("crystal_barrage"),
+    makeBlock("star_barrage"),
     makeBlock("wait"),
-    makeBlock("knife_dance"),
-    makeBlock("board_rend"),
+    makeBlock("tracking_swords"),
+    makeBlock("box_splitter"),
     makeBlock("telegraph"),
-    makeBlock("sword_corridor"),
-    makeBlock("sanguine_slash"),
+    makeBlock("sword_tunnel"),
+    makeBlock("rotating_slash"),
     makeBlock("pipis_barrage"),
     makeBlock("flying_heads"),
+    makeBlock("chained_heart"),
     makeBlock("giga_laser")
   ];
   renderSequence();
@@ -1056,38 +1077,55 @@
     if (!block) return;
     const p = block.params || {};
     switch (block.type) {
-      case "crystal_barrage":
-        g.crystal = {params:p, phase:"fire", t:0, spawnAcc:0, crystals:[]};
+      case "star_barrage":
+        g.star = {params:p, phase:"fire", t:0, spawnAcc:0, stars:[]};
         break;
-      case "knife_dance":
-        g.knifeDance = {params:p, swords:[], nextAt:0, spawned:0, t:0};
+      case "tracking_swords":
+        g.trackSwords = {params:p, swords:[], nextAt:0, spawned:0, t:0};
+        if (p.mode === "circle") {
+          // Pre-spawn circle of swords around player
+          const n = p.count || 5;
+          for (let i=0; i<n; i++) {
+            const ang = (i/n)*Math.PI*2;
+            const dist = 70;
+            g.trackSwords.swords.push({
+              x: g.player.x + Math.sin(ang)*dist,
+              y: g.player.y + Math.cos(ang)*dist,
+              lockX: g.player.x, lockY: g.player.y,
+              phase:"track", timer:0, ang: ang + Math.PI,
+              shape:p.shape||"knife", params:p, circle:true
+            });
+          }
+          g.trackSwords.spawned = n;
+        }
         break;
-      case "board_rend":
-        g.boardRend = {
+      case "box_splitter":
+        g.boxSplit = {
           cutsLeft: p.cuts||3, orient:p.orient||"random",
-          gapTime:p.gapTime||1.1, bulletRate:p.bulletRate||11,
+          gapTime:p.gapTime||1.15, bulletRate:p.bulletRate||12,
           shape:p.shape||"shard", params:p,
           state:"slash", t:0, currentOrient:null, separation:0, slashProgress:0, spawnAcc:0
         };
-        beginRendCut(g);
+        beginSplitCut(g);
         break;
-      case "sword_corridor":
-        g.corridor = {
+      case "sword_tunnel":
+        g.tunnel = {
           params:p, blades:[], phase:"wave", t:0,
-          waveAmp:p.waveAmp||38, waveSpeed:p.waveSpeed||1.8,
-          holdTime:p.holdTime||2.8, shape:p.shape||"blade"
+          waveAmp:p.waveAmp||42, waveSpeed:p.waveSpeed||1.9,
+          holdTime:p.holdTime||2.9, shape:p.shape||"blade",
+          narrow: p.gapNarrow === "on"
         };
-        // Top and bottom lines
-        const spacing = 18;
+        const spacing = g.tunnel.narrow ? 14 : 18;
         for (let x = BOX.x + 10; x < BOX.x + BOX.w - 10; x += spacing) {
-          g.corridor.blades.push({x, y: BOX.y + 14, baseY: BOX.y + 14, side:"top", ang:0, phase:"wave"});
-          g.corridor.blades.push({x, y: BOX.y + BOX.h - 14, baseY: BOX.y + BOX.h - 14, side:"bottom", ang:0, phase:"wave"});
+          g.tunnel.blades.push({x, y: BOX.y + 14, baseY: BOX.y + 14, side:"top", ang:0, phase:"wave"});
+          g.tunnel.blades.push({x, y: BOX.y + BOX.h - 14, baseY: BOX.y + BOX.h - 14, side:"bottom", ang:0, phase:"wave"});
         }
         break;
-      case "sanguine_slash":
-        g.sanguine = {
-          cycles:p.cycles||4, gap:p.gap||0.7, width:p.width||16,
-          spinTime:p.spinTime||0.55, t:0, cycle:0, cuts:[]
+      case "rotating_slash":
+        g.rotSlash = {
+          cycles:p.cycles||6, gap:p.gap||0.65, width:p.width||15,
+          spinTime:p.spinTime||0.55, startLines:p.startLines||1,
+          finale: p.finale === "on", t:0, cycle:0, cuts:[], finaleCuts:[]
         };
         break;
       case "shatter_ring":
@@ -1201,10 +1239,15 @@
     }
   }
 
-  function beginRendCut(g) {
-    const r = g.boardRend;
+  function beginSplitCut(g) {
+    const r = g.boxSplit;
     if (!r) return;
-    r.currentOrient = r.orient==="random" ? (Math.random()<0.5?"h":"v") : r.orient;
+    if (r.orient === "random") {
+      const opts = ["h","v","diag"];
+      r.currentOrient = opts[Math.floor(Math.random()*opts.length)];
+    } else {
+      r.currentOrient = r.orient;
+    }
     r.state = "slash"; r.t=0; r.separation=0; r.slashProgress=0; r.spawnAcc=0;
   }
 
@@ -1345,8 +1388,8 @@
       g.player.y += (dy/dist)*force*dt*18;
     }
 
-    // Board Rend
-    if (g.boardRend) updateBoardRend(g, dt);
+    // Box Splitter
+    if (g.boxSplit) updateBoxSplit(g, dt);
 
     // Instruction
     if (g.pc===0 && g.t===0 && g.steps===0) enterInstruction(g, fightSequence[0]);
@@ -1356,51 +1399,49 @@
       const dur = getBlockDuration(block);
       const p = block.params || {};
 
-      // Crystal Barrage phases
-      if (block.type==="crystal_barrage" && g.crystal) {
-        const c = g.crystal;
+      // ── Star Barrage (reverse + explode) ──
+      if (block.type==="star_barrage" && g.star) {
+        const c = g.star;
         c.t += dt;
         if (c.phase==="fire") {
           c.spawnAcc += dt;
-          const interval = 1/(p.rate||4.5);
+          const interval = 1/(p.rate||4.2);
           while (c.spawnAcc >= interval) {
             c.spawnAcc -= interval;
             const ang = Math.atan2(g.player.x - g.bossX, g.player.y - (BOX.y-4));
-            const spd = (p.speed||130)*(0.9+Math.random()*0.2);
-            const b = mkBullet(g.bossX, BOX.y-4, Math.sin(ang)*spd, Math.cos(ang)*spd, 7, p.shape||"crystal",
-              projectileExtra(p, {crystal:true, phase:"out", timer:0}));
+            const spd = (p.speed||125)*(0.9+Math.random()*0.2);
+            const b = mkBullet(g.bossX, BOX.y-4, Math.sin(ang)*spd, Math.cos(ang)*spd, 7.5, p.shape||"star",
+              projectileExtra(p, {star:true, phase:"out", timer:0}));
             g.bullets.push(b);
-            c.crystals.push(b);
+            c.stars.push(b);
           }
-          if (c.t >= (p.fireTime||1.8)) {
+          if (c.t >= (p.fireTime||1.9)) {
             c.phase = "pause"; c.t=0;
-            c.crystals.forEach(b => { b.vx*=0.15; b.vy*=0.15; b.phase="pause"; });
+            c.stars.forEach(b => { b.vx*=0.12; b.vy*=0.12; b.phase="pause"; });
           }
         } else if (c.phase==="pause") {
-          if (c.t >= 0.45) {
+          if (c.t >= 0.48) {
             c.phase = "reverse"; c.t=0;
-            c.crystals.forEach(b => {
-              b.vx = -b.vx*4.5; b.vy = -b.vy*4.5;
+            c.stars.forEach(b => {
+              b.vx = -b.vx*5.2; b.vy = -b.vy*5.2;
               b.phase = "reverse";
             });
           }
         } else if (c.phase==="reverse") {
-          if (c.t >= 0.7) {
+          if (c.t >= 0.65) {
             c.phase = "explode"; c.t=0;
-            c.crystals.forEach(b => {
-              b.flash = 1;
-              b.phase = "explode";
-            });
+            c.stars.forEach(b => { b.flash = 1; b.phase = "explode"; });
           }
         } else if (c.phase==="explode") {
-          c.crystals.forEach(b => {
+          c.stars.forEach(b => {
             if (b.phase==="explode" && !b.exploded) {
               b.exploded = true; b.life=0;
-              for (let i=0; i<(p.shards||6); i++) {
-                const ang = (i/(p.shards||6))*Math.PI*2 + Math.random()*0.3;
-                const spd = (i%3===0 ? 155 : 95) + Math.random()*35;
-                g.bullets.push(mkBullet(b.x, b.y, Math.sin(ang)*spd, Math.cos(ang)*spd, 4, "shard", {
-                  blue:b.blue, life: i%3===0 ? 3.8 : 2.4
+              const n = p.shards||6;
+              for (let i=0; i<n; i++) {
+                const ang = (i/n)*Math.PI*2 + Math.random()*0.25;
+                const spd = (i%3===0 ? 160 : 100) + Math.random()*40;
+                g.bullets.push(mkBullet(b.x, b.y, Math.sin(ang)*spd, Math.cos(ang)*spd, 4.2, "shard", {
+                  blue:b.blue, life: i%3===0 ? 4 : 2.5
                 }));
               }
             }
@@ -1408,52 +1449,50 @@
         }
       }
 
-      // Knife Dance
-      if (block.type==="knife_dance" && g.knifeDance) {
-        const kd = g.knifeDance;
+      // ── Tracking Swords ──
+      if (block.type==="tracking_swords" && g.trackSwords) {
+        const kd = g.trackSwords;
         kd.t += dt;
-        if (kd.spawned < (p.count||5) && kd.t >= kd.nextAt) {
-          // Spawn a tracking sword from a random edge
+        if (p.mode !== "circle" && kd.spawned < (p.count||5) && kd.t >= kd.nextAt) {
           const side = kd.spawned % 4;
           let x,y;
-          if (side===0) { x=BOX.x-25; y=g.player.y; }
-          else if (side===1) { x=BOX.x+BOX.w+25; y=g.player.y; }
-          else if (side===2) { x=g.player.x; y=BOX.y-25; }
-          else { x=g.player.x; y=BOX.y+BOX.h+25; }
-          const sword = {
+          if (side===0) { x=BOX.x-28; y=g.player.y; }
+          else if (side===1) { x=BOX.x+BOX.w+28; y=g.player.y; }
+          else if (side===2) { x=g.player.x; y=BOX.y-28; }
+          else { x=g.player.x; y=BOX.y+BOX.h+28; }
+          kd.swords.push({
             x, y, lockX:g.player.x, lockY:g.player.y,
             phase:"track", timer:0, ang:0,
             shape:p.shape||"knife", params:p
-          };
-          kd.swords.push(sword);
+          });
           kd.spawned++;
-          kd.nextAt = kd.t + (p.gap||0.55);
+          kd.nextAt = kd.t + (p.gap||0.5);
         }
         kd.swords.forEach(s => {
           s.timer += dt;
           if (s.phase==="track") {
-            // Fully track horizontal (and vertical lightly)
-            s.lockX += (g.player.x - s.lockX) * Math.min(1, dt*8);
-            s.lockY += (g.player.y - s.lockY) * Math.min(1, dt*3);
-            s.x += (s.lockX - s.x) * Math.min(1, dt*6);
-            s.y += (s.lockY - s.y) * Math.min(1, dt*4);
+            // Smooth tracking
+            s.lockX += (g.player.x - s.lockX) * Math.min(1, dt*9);
+            s.lockY += (g.player.y - s.lockY) * Math.min(1, dt*4);
+            s.x += (s.lockX - s.x) * Math.min(1, dt*7);
+            s.y += (s.lockY - s.y) * Math.min(1, dt*5);
             s.ang = Math.atan2(s.lockX - s.x, s.lockY - s.y);
-            if (s.timer >= (p.lockTime||0.85)) {
+            if (s.timer >= (p.lockTime||0.9)) {
               s.phase = "pull"; s.timer=0;
               s.pullFromX = s.x; s.pullFromY = s.y;
               const backAng = s.ang + Math.PI;
-              s.pullToX = s.x + Math.sin(backAng)*35;
-              s.pullToY = s.y + Math.cos(backAng)*35;
+              s.pullToX = s.x + Math.sin(backAng)*38;
+              s.pullToY = s.y + Math.cos(backAng)*38;
             }
           } else if (s.phase==="pull") {
-            const frac = Math.min(1, s.timer/(p.pullTime||0.35));
+            const frac = Math.min(1, s.timer/(p.pullTime||0.32));
             s.x = s.pullFromX + (s.pullToX-s.pullFromX)*frac;
             s.y = s.pullFromY + (s.pullToY-s.pullFromY)*frac;
             if (frac>=1) {
               s.phase = "fire"; s.timer=0;
               const fireAng = Math.atan2(s.lockX - s.x, s.lockY - s.y);
-              s.vx = Math.sin(fireAng)*480;
-              s.vy = Math.cos(fireAng)*480;
+              s.vx = Math.sin(fireAng)*520;
+              s.vy = Math.cos(fireAng)*520;
             }
           } else if (s.phase==="fire") {
             s.x += s.vx*dt; s.y += s.vy*dt;
@@ -1461,15 +1500,15 @@
         });
       }
 
-      // Sword Corridor
-      if (block.type==="sword_corridor" && g.corridor) {
-        const c = g.corridor;
+      // ── Sword Tunnel ──
+      if (block.type==="sword_tunnel" && g.tunnel) {
+        const c = g.tunnel;
         c.t += dt;
         if (c.phase==="wave") {
           c.blades.forEach(b => {
-            const wave = Math.sin(c.t * c.waveSpeed + b.x*0.04) * c.waveAmp;
-            if (b.side==="top") b.y = b.baseY + Math.max(0, wave*0.5);
-            else b.y = b.baseY - Math.max(0, wave*0.5);
+            const wave = Math.sin(c.t * c.waveSpeed + b.x*0.038) * c.waveAmp;
+            if (b.side==="top") b.y = b.baseY + Math.max(0, wave*(c.narrow?0.7:0.55));
+            else b.y = b.baseY - Math.max(0, wave*(c.narrow?0.7:0.55));
           });
           if (c.t >= c.holdTime) {
             c.phase = "telegraph"; c.t=0;
@@ -1480,18 +1519,18 @@
           }
         } else if (c.phase==="telegraph") {
           c.blades.forEach(b => {
-            b.telegraphLen = Math.min(180, b.telegraphLen + 220*dt);
+            b.telegraphLen = Math.min(190, b.telegraphLen + 240*dt);
           });
-          if (c.t >= 0.7) {
+          if (c.t >= 0.75) {
             c.phase = "pull"; c.t=0;
             c.blades.forEach(b => {
               b.pullFromX=b.x; b.pullFromY=b.y;
-              b.pullToX = b.x - Math.sin(b.ang)*28;
-              b.pullToY = b.y - Math.cos(b.ang)*28;
+              b.pullToX = b.x - Math.sin(b.ang)*30;
+              b.pullToY = b.y - Math.cos(b.ang)*30;
             });
           }
         } else if (c.phase==="pull") {
-          const frac = Math.min(1, c.t/0.3);
+          const frac = Math.min(1, c.t/0.28);
           c.blades.forEach(b => {
             b.x = b.pullFromX + (b.pullToX-b.pullFromX)*frac;
             b.y = b.pullFromY + (b.pullToY-b.pullFromY)*frac;
@@ -1499,8 +1538,8 @@
           if (frac>=1) {
             c.phase = "fire"; c.t=0;
             c.blades.forEach(b => {
-              b.vx = Math.sin(b.ang)*420;
-              b.vy = Math.cos(b.ang)*420;
+              b.vx = Math.sin(b.ang)*440;
+              b.vy = Math.cos(b.ang)*440;
             });
           }
         } else if (c.phase==="fire") {
@@ -1508,34 +1547,55 @@
         }
       }
 
-      // Sanguine Slash
-      if (block.type==="sanguine_slash" && g.sanguine) {
-        const s = g.sanguine;
+      // ── Rotating Slash ──
+      if (block.type==="rotating_slash" && g.rotSlash) {
+        const s = g.rotSlash;
         s.t += dt;
         if (s.t >= s.gap && s.cycle < s.cycles) {
           s.t = 0;
-          s.cuts.push({
-            x: g.player.x, y: g.player.y,
-            ang: Math.random()*Math.PI,
-            width: s.width,
-            spin: 18 + Math.random()*8,
-            spinTimer: 0,
-            spinTime: s.spinTime,
-            life: s.spinTime + 0.45,
-            damaging: false
-          });
+          // Escalating line count
+          const lines = Math.min(4, s.startLines + Math.floor(s.cycle * 0.6));
+          for (let i=0; i<lines; i++) {
+            s.cuts.push({
+              x: g.player.x, y: g.player.y,
+              ang: (i/lines)*Math.PI + Math.random()*0.15,
+              width: s.width,
+              spin: 16 + Math.random()*10,
+              spinTimer: 0,
+              spinTime: s.spinTime,
+              life: s.spinTime + 0.5,
+              damaging: false
+            });
+          }
           s.cycle++;
         }
-        s.cuts.forEach(c => {
+        // Finale spiral
+        if (s.finale && s.cycle >= s.cycles && s.finaleCuts.length === 0 && s.t > 0.3) {
+          const cx = BOX.x + BOX.w/2, cy = BOX.y + BOX.h/2;
+          for (let i=0; i<8; i++) {
+            s.finaleCuts.push({
+              x: cx, y: cy,
+              ang: (i/8)*Math.PI*2,
+              width: s.width * 0.9,
+              spin: 12 + i*0.8,
+              spinTimer: 0,
+              spinTime: 0.9,
+              life: 1.4,
+              damaging: false
+            });
+          }
+        }
+        const allCuts = s.cuts.concat(s.finaleCuts);
+        allCuts.forEach(c => {
           c.spinTimer += dt;
           c.life -= dt;
-          // Brake the spin
           const progress = Math.min(1, c.spinTimer / c.spinTime);
           c.currentSpin = c.spin * (1 - progress*progress);
           c.ang += c.currentSpin * dt;
-          if (progress >= 0.92 && !c.damaging) c.damaging = true;
+          if (progress >= 0.9 && !c.damaging) c.damaging = true;
         });
         s.cuts = s.cuts.filter(c => c.life > 0);
+        s.finaleCuts = s.finaleCuts.filter(c => c.life > 0);
       }
 
       // Continuous spawners
@@ -1614,7 +1674,7 @@
             vx: fromLeft ? 1 : -1,
             ang: fromLeft ? 0 : Math.PI,
             speed: p.speed||2.2,
-            r: 28, life:0
+            r: 28, t:0
           });
           sc.spawned++;
           sc.nextAt = sc.t + (p.gap||0.7);
@@ -1747,14 +1807,13 @@
         } else g.pc+=1;
         g.t=0;
         // cleanup
-        ["cage","giga","comboProcs","boardRend","corridor","sanguine","crystal","knifeDance",
+        ["cage","giga","comboProcs","boxSplit","tunnel","rotSlash","star","trackSwords",
          "spikes","scythes","gravity","echo","grasp","heads","heart","phones","mail"].forEach(k => {
-          if (block.type.replace(/_/g,"") === k.replace(/_/g,"") || 
-              (block.type==="board_rend"&&k==="boardRend") ||
-              (block.type==="knife_dance"&&k==="knifeDance") ||
-              (block.type==="sword_corridor"&&k==="corridor") ||
-              (block.type==="sanguine_slash"&&k==="sanguine") ||
-              (block.type==="crystal_barrage"&&k==="crystal") ||
+          if ((block.type==="box_splitter"&&k==="boxSplit") ||
+              (block.type==="tracking_swords"&&k==="trackSwords") ||
+              (block.type==="sword_tunnel"&&k==="tunnel") ||
+              (block.type==="rotating_slash"&&k==="rotSlash") ||
+              (block.type==="star_barrage"&&k==="star") ||
               (block.type==="rising_spikes"&&k==="spikes") ||
               (block.type==="scythe_sweep"&&k==="scythes") ||
               (block.type==="gravity_well"&&k==="gravity") ||
@@ -1808,7 +1867,7 @@
     g.bullets.forEach(b => {
       if (b.spinEnabled) b.rotation += (b.spinSpeed||0)*dt;
 
-      if (b.crystal && b.flash) {
+      if (b.star && b.flash) {
         b.flash -= dt*3;
       }
 
@@ -1912,25 +1971,26 @@
           if (!g.giga.blue || g.player.moving) hit=true;
         }
       }
-      // Sanguine
-      if (!hit && g.sanguine) {
-        for (const c of g.sanguine.cuts) {
+      // Rotating Slash
+      if (!hit && g.rotSlash) {
+        const all = g.rotSlash.cuts.concat(g.rotSlash.finaleCuts||[]);
+        for (const c of all) {
           if (!c.damaging) continue;
           const dx=g.player.x-c.x, dy=g.player.y-c.y;
           const proj = dx*Math.sin(c.ang) + dy*Math.cos(c.ang);
           const perp = dx*Math.cos(c.ang) - dy*Math.sin(c.ang);
-          if (Math.abs(perp) < c.width/2+g.player.r && Math.abs(proj)<260) { hit=true; break; }
+          if (Math.abs(perp) < c.width/2+g.player.r && Math.abs(proj)<270) { hit=true; break; }
         }
       }
-      // Knife Dance swords
-      if (!hit && g.knifeDance) {
-        for (const s of g.knifeDance.swords) {
-          if (s.phase==="fire" && Math.hypot(s.x-g.player.x, s.y-g.player.y)<10+g.player.r) { hit=true; break; }
+      // Tracking Swords
+      if (!hit && g.trackSwords) {
+        for (const s of g.trackSwords.swords) {
+          if (s.phase==="fire" && Math.hypot(s.x-g.player.x, s.y-g.player.y)<11+g.player.r) { hit=true; break; }
         }
       }
-      // Corridor
-      if (!hit && g.corridor && (g.corridor.phase==="fire"||g.corridor.phase==="wave")) {
-        for (const b of g.corridor.blades) {
+      // Tunnel
+      if (!hit && g.tunnel && (g.tunnel.phase==="fire"||g.tunnel.phase==="wave")) {
+        for (const b of g.tunnel.blades) {
           if (Math.hypot(b.x-g.player.x, b.y-g.player.y)<9+g.player.r) { hit=true; break; }
         }
       }
@@ -1969,8 +2029,8 @@
     }
   }
 
-  function updateBoardRend(g, dt) {
-    const r = g.boardRend;
+  function updateBoxSplit(g, dt) {
+    const r = g.boxSplit;
     if (!r) return;
     r.t += dt;
     if (r.state==="slash") {
@@ -1980,8 +2040,13 @@
         // damage on the cut line
         if (r.currentOrient==="h") {
           if (Math.abs(g.player.y-(BOX.y+BOX.h/2))<12+g.player.r) hitPlayer(g,14);
-        } else {
+        } else if (r.currentOrient==="v") {
           if (Math.abs(g.player.x-(BOX.x+BOX.w/2))<12+g.player.r) hitPlayer(g,14);
+        } else {
+          // diagonal
+          const dx = g.player.x - (BOX.x+BOX.w/2);
+          const dy = g.player.y - (BOX.y+BOX.h/2);
+          if (Math.abs(dx - dy) < 18 || Math.abs(dx + dy) < 18) hitPlayer(g,14);
         }
       }
     } else if (r.state==="separate") {
@@ -1990,17 +2055,22 @@
     } else if (r.state==="gap") {
       r.separation=1;
       r.spawnAcc += dt;
-      const interval = 1/(r.bulletRate||11);
+      const interval = 1/(r.bulletRate||12);
       while (r.spawnAcc>=interval) {
         r.spawnAcc-=interval;
         if (r.currentOrient==="h") {
           const x=BOX.x+Math.random()*BOX.w;
           const dir=Math.random()<0.5?-1:1;
-          g.bullets.push(mkBullet(x, BOX.y+BOX.h/2, 0, dir*145, 7.5, r.shape, projectileExtra(r.params)));
-        } else {
+          g.bullets.push(mkBullet(x, BOX.y+BOX.h/2, 0, dir*150, 7.5, r.shape, projectileExtra(r.params)));
+        } else if (r.currentOrient==="v") {
           const y=BOX.y+Math.random()*BOX.h;
           const dir=Math.random()<0.5?-1:1;
-          g.bullets.push(mkBullet(BOX.x+BOX.w/2, y, dir*145, 0, 7.5, r.shape, projectileExtra(r.params)));
+          g.bullets.push(mkBullet(BOX.x+BOX.w/2, y, dir*150, 0, 7.5, r.shape, projectileExtra(r.params)));
+        } else {
+          // diagonal burst
+          const ang = Math.random()*Math.PI*2;
+          g.bullets.push(mkBullet(BOX.x+BOX.w/2, BOX.y+BOX.h/2,
+            Math.sin(ang)*155, Math.cos(ang)*155, 6.5, r.shape, projectileExtra(r.params)));
         }
       }
       // Constrain player to halves
@@ -2008,7 +2078,7 @@
       if (r.currentOrient==="v") {
         if (g.player.x < midX) g.player.x = Math.min(g.player.x, midX-sep-g.player.r);
         else g.player.x = Math.max(g.player.x, midX+sep+g.player.r);
-      } else {
+      } else if (r.currentOrient==="h") {
         if (g.player.y < midY) g.player.y = Math.min(g.player.y, midY-sep-g.player.r);
         else g.player.y = Math.max(g.player.y, midY+sep+g.player.r);
       }
@@ -2017,7 +2087,7 @@
       r.separation = 1 - Math.min(1, r.t/0.35);
       if (r.t>=0.35) {
         r.cutsLeft--;
-        if (r.cutsLeft>0) beginRendCut(g);
+        if (r.cutsLeft>0) beginSplitCut(g);
         else r.state="done";
       }
     }
@@ -2066,7 +2136,6 @@
       ctx.ellipse(x,y,r*1.1,r*0.9,0,0,Math.PI*2);
     } else if (shape==="head"||shape==="spamton") {
       ctx.arc(x,y,r,0,Math.PI*2);
-      // simple face
       ctx.moveTo(x-r*.4,y-r*.2); ctx.arc(x-r*.25,y-r*.2,r*.15,0,Math.PI*2);
       ctx.moveTo(x+r*.1,y-r*.2); ctx.arc(x+r*.25,y-r*.2,r*.15,0,Math.PI*2);
     } else if (shape==="bolt") {
@@ -2103,29 +2172,32 @@
     ctx.beginPath(); ctx.arc(g.bossX, BOX.y-bossSettings.size-8, bossSettings.size+8,0,Math.PI*2); ctx.fill();
     ctx.globalAlpha=1;
 
-    // Board Rend – actual split halves
-    if (g.boardRend && g.boardRend.state!=="done") {
-      const r=g.boardRend;
+    // Box Splitter – actual split halves
+    if (g.boxSplit && g.boxSplit.state!=="done") {
+      const r=g.boxSplit;
       const midX=BOX.x+BOX.w/2, midY=BOX.y+BOX.h/2;
       const sep=r.separation*22;
       ctx.save();
       if (r.currentOrient==="v") {
-        // left half
         ctx.fillStyle="rgba(12,10,20,0.92)";
         ctx.fillRect(BOX.x, BOX.y, BOX.w/2-sep, BOX.h);
-        // right half
         ctx.fillRect(midX+sep, BOX.y, BOX.w/2-sep, BOX.h);
-        // cut glow
         ctx.strokeStyle=`rgba(94,200,255,${0.6+r.slashProgress*0.4})`;
         ctx.lineWidth=2+r.slashProgress*4;
         ctx.beginPath(); ctx.moveTo(midX,BOX.y); ctx.lineTo(midX,BOX.y+BOX.h); ctx.stroke();
-      } else {
+      } else if (r.currentOrient==="h") {
         ctx.fillStyle="rgba(12,10,20,0.92)";
         ctx.fillRect(BOX.x, BOX.y, BOX.w, BOX.h/2-sep);
         ctx.fillRect(BOX.x, midY+sep, BOX.w, BOX.h/2-sep);
         ctx.strokeStyle=`rgba(94,200,255,${0.6+r.slashProgress*0.4})`;
         ctx.lineWidth=2+r.slashProgress*4;
         ctx.beginPath(); ctx.moveTo(BOX.x,midY); ctx.lineTo(BOX.x+BOX.w,midY); ctx.stroke();
+      } else {
+        // diagonal visual
+        ctx.strokeStyle=`rgba(94,200,255,${0.7+r.slashProgress*0.3})`;
+        ctx.lineWidth=3+r.slashProgress*3;
+        ctx.beginPath(); ctx.moveTo(BOX.x,BOX.y); ctx.lineTo(BOX.x+BOX.w,BOX.y+BOX.h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(BOX.x+BOX.w,BOX.y); ctx.lineTo(BOX.x,BOX.y+BOX.h); ctx.stroke();
       }
       ctx.restore();
     }
@@ -2175,36 +2247,36 @@
       ctx.beginPath(); ctx.arc(R.cx,R.cy,R.r,0,Math.PI*2); ctx.stroke();
     });
 
-    // Sanguine cuts
-    if (g.sanguine) {
-      g.sanguine.cuts.forEach(c => {
-        const a = Math.max(0, c.life / (c.spinTime+0.45));
+    // Rotating Slash cuts
+    if (g.rotSlash) {
+      const all = g.rotSlash.cuts.concat(g.rotSlash.finaleCuts||[]);
+      all.forEach(c => {
+        const a = Math.max(0, c.life / (c.spinTime+0.5));
         ctx.save();
         ctx.translate(c.x, c.y);
         ctx.rotate(-c.ang);
-        ctx.fillStyle = c.damaging ? `rgba(255,40,80,${0.75*a})` : `rgba(255,120,160,${0.45*a})`;
-        ctx.fillRect(-280, -c.width/2, 560, c.width);
+        ctx.fillStyle = c.damaging ? `rgba(255,40,80,${0.8*a})` : `rgba(255,120,160,${0.5*a})`;
+        ctx.fillRect(-290, -c.width/2, 580, c.width);
         if (c.damaging) {
-          ctx.fillStyle=`rgba(255,200,220,${0.9*a})`;
-          ctx.fillRect(-280, -c.width*0.18, 560, c.width*0.36);
+          ctx.fillStyle=`rgba(255,200,220,${0.95*a})`;
+          ctx.fillRect(-290, -c.width*0.18, 580, c.width*0.36);
         }
         ctx.restore();
       });
     }
 
-    // Knife Dance swords
-    if (g.knifeDance) {
-      g.knifeDance.swords.forEach(s => {
+    // Tracking Swords
+    if (g.trackSwords) {
+      g.trackSwords.swords.forEach(s => {
         ctx.fillStyle = s.phase==="fire" ? "#e2e8f0" : "#a0aec0";
         ctx.save();
         ctx.translate(s.x, s.y);
         ctx.rotate(-s.ang);
         drawShape(ctx, 0, 0, 9, s.shape||"knife");
         ctx.restore();
-        // lock indicator while tracking
         if (s.phase==="track" || s.phase==="pull") {
-          ctx.strokeStyle="rgba(255,210,63,0.5)";
-          ctx.lineWidth=1;
+          ctx.strokeStyle="rgba(255,210,63,0.55)";
+          ctx.lineWidth=1.2;
           ctx.setLineDash([3,3]);
           ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(s.lockX,s.lockY); ctx.stroke();
           ctx.setLineDash([]);
@@ -2212,17 +2284,16 @@
       });
     }
 
-    // Sword Corridor
-    if (g.corridor) {
-      g.corridor.blades.forEach(b => {
+    // Sword Tunnel
+    if (g.tunnel) {
+      g.tunnel.blades.forEach(b => {
         ctx.fillStyle="#c9d3e0";
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(-(b.ang||0));
-        drawShape(ctx, 0, 0, 7, g.corridor.shape||"blade");
+        drawShape(ctx, 0, 0, 7, g.tunnel.shape||"blade");
         ctx.restore();
-        // Telegraph lines
-        if (g.corridor.phase==="telegraph" && b.telegraphLen) {
+        if (g.tunnel.phase==="telegraph" && b.telegraphLen) {
           ctx.strokeStyle="rgba(255,80,100,0.55)";
           ctx.lineWidth=2;
           ctx.beginPath();
@@ -2267,7 +2338,6 @@
     if (g.heart) {
       ctx.fillStyle="#ff7eb9";
       drawShape(ctx, g.heart.x, g.heart.y, 13, "heart");
-      // chain
       ctx.strokeStyle="rgba(200,200,220,0.5)";
       ctx.lineWidth=2;
       ctx.beginPath();
