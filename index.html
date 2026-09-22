@@ -216,6 +216,7 @@ function newFight(cfg){
     tp:0,hpBoss:cfg.bossHp,maxBoss:cfg.bossHp,guard:false,shake:0,flash:0,freeze:0,
     pose:'idle',bossFlash:0,dark:0,split:null,faceBoard:null,atkTint:null,
     flags:{phonesHard:false,face:null,neoDone:false,holdBreath:false,novaDone:false},
+    novaMode:false,novaGlow:0,novaHue:0,
     menuSel:0,subSel:0,menuMode:'main', // main | act | item | text
     text:'',ti:0,doneT:-1,lastN:0,msg:'',hurtThisAttack:false,q:0,neoHits:0,
     lastGraze:0,ending:false,endT:0,fb:null,anim:null,tpFlash:0,
@@ -394,6 +395,35 @@ function updateEnts(dt){
 function drawBg(c){
   c.fillStyle='#05030b';c.fillRect(0,0,W,H);
   const th=G.B.theme,bx=G.B.x,by=G.B.y;
+  // Crystal Nova full-screen cinematic BG (like the reference shots)
+  if(G.novaMode){
+    const hue = G.novaHue||0;
+    // deep red → violet radial
+    const g=c.createRadialGradient(W/2,H/2-20,20,W/2,H/2-20,420);
+    g.addColorStop(0, 'rgba('+(180+75*hue)+','+(20+40*hue)+','+(60+120*hue)+','+(0.55+0.25*hue)+')');
+    g.addColorStop(0.45, 'rgba('+(90+40*hue)+',10,'+(40+80*hue)+',0.85)');
+    g.addColorStop(1, 'rgba(10,0,20,1)');
+    c.fillStyle=g;c.fillRect(0,0,W,H);
+    // radial rays
+    c.save();
+    c.globalAlpha = 0.12 + 0.1*hue;
+    c.strokeStyle = '#ffb0d0';
+    c.lineWidth = 2;
+    for(let i=0;i<24;i++){
+      const a=i/24*TAU + G.t*0.08;
+      c.beginPath();
+      c.moveTo(W/2, H/2-20);
+      c.lineTo(W/2+Math.cos(a)*700, H/2-20+Math.sin(a)*700);
+      c.stroke();
+    }
+    c.restore();
+    // soft vignette
+    const vg=c.createRadialGradient(W/2,H/2,80,W/2,H/2,380);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(1,'rgba(0,0,0,0.55)');
+    c.fillStyle=vg;c.fillRect(0,0,W,H);
+    return;
+  }
   if(th==='knight'){
     const g=c.createRadialGradient(bx,by,10,bx,by,340);
     g.addColorStop(0,'rgba(150,140,220,.22)');g.addColorStop(1,'rgba(150,140,220,0)');
@@ -449,6 +479,8 @@ function drawBoard(c){
       c.strokeStyle='#ff2f55';c.lineWidth=5;c.beginPath();c.moveTo(ax,ay);c.lineTo(bx,by);c.stroke();
       c.restore();
     }
+  }else if(G.novaMode){
+    // full-screen arena — no visible box
   }else{
     c.fillStyle='#000';c.fillRect(b.x,b.y,b.w,b.h);
     c.strokeStyle=G.boardCol||'#fff';c.lineWidth=3;c.strokeRect(b.x,b.y,b.w,b.h);
@@ -756,7 +788,7 @@ function* atkSplitter(v){
 function* atkTunnel(v){
   G.pose='slash';
   const b=G.box,cx=b.x+b.w/2,cy=b.y+b.h/2;
-  const gapH=v===3?21:29,spd=v===3?275:248,dur=v===2?7.4:6.6,step=.115;
+  const gapH=v===3?18:26,spd=v===3?420:360,dur=v===2?6.8:6.0,step=.095;
   const lim=b.h/2-gapH-8;
   let g=rnd(-lim,lim)*.5,gv=0,phi=0,t=0;
   while(t<dur){
@@ -823,7 +855,7 @@ function* atkTunnel(v){
       }});
     co((function*(){
       yield .95+i*.07;
-      e.on=true;e.vx=Math.cos(e.ang)*560;e.vy=Math.sin(e.ang)*560;sfx('slash');
+      e.on=true;e.vx=Math.cos(e.ang)*720;e.vy=Math.sin(e.ang)*720;sfx('slash');
     })());
   }
   yield 1.2;
@@ -1623,102 +1655,180 @@ function drawSlashAnims(c){
 function* atkCrystalNova(){
   G.pose = 'cast';
   G.flags.novaDone = true;
-  G.atkTint = '180,80,255';
-  G.dark = 0;
+  G.novaMode = true;
+  G.atkTint = null;
   G.msg = 'The Knight gathers an unfathomable light...';
-  const b = G.box, cx = b.x + b.w/2, cy = b.y + b.h/2;
-  // cinematic: darken + knight presence
-  yield* tween(0.6, p => { G.dark = 0.55 * p; });
+  // expand box to full screen — soul can move everywhere
+  G.boxT = {x: 8, y: 8, w: W-16, h: H-16};
+  G.boardCol = 'rgba(255,255,255,0)'; // invisible border
+  // white glow charge on the Knight
+  G.novaGlow = 0;
+  yield* tween(1.1, p => {
+    G.novaGlow = p;
+    G.dark = 0.15 * p;
+  });
   sfx('charge');
-  // pull phase — crystals drift inward from edges
-  for(let i=0;i<18;i++){
-    const side = i%2===0 ? -1 : 1;
-    const ox = side < 0 ? b.x - 20 : b.x + b.w + 20;
-    const oy = rnd(b.y+10, b.y+b.h-10);
-    const targetX = cx + rnd(-40,40), targetY = cy + rnd(-30,30);
-    const sp = rnd(70,110);
-    const a = Math.atan2(targetY-oy, targetX-ox);
-    spawn({kind:'star', x:ox, y:oy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-      r:3, life:3.5, dmg:10, graze:0.7, rot:rnd(0,TAU), spin:rnd(1,2),
-      col:'#b57bff', size:3,
-      upd(e,dt){ e.size = Math.min(10, e.size + dt*4); e.vx *= Math.pow(0.92, dt*10); e.vy *= Math.pow(0.92, dt*10); },
-      draw(c,e){ star6(c,e.x,e.y,e.size,e.rot,e.col); }
-    });
-    if(i%3===0) sfx('pop');
-    yield 0.07;
-  }
-  yield 0.35;
-  // swirling ring pull
-  for(let i=0;i<12;i++){
-    const a0 = i/12*TAU + G.t;
-    const R = 160;
-    const ox = cx + Math.cos(a0)*R, oy = cy + Math.sin(a0)*R;
-    spawn({kind:'star', x:ox, y:oy, vx:0, vy:0, r:3, life:2.2, dmg:10, graze:0.6,
-      rot:a0, spin:2, col:'#ff5aa5', size:4, ang:a0, R,
-      upd(e,dt){
-        e.ang += dt * 1.8;
-        e.R = Math.max(20, e.R - dt*90);
-        e.x = cx + Math.cos(e.ang)*e.R;
-        e.y = cy + Math.sin(e.ang)*e.R;
-      },
-      draw(c,e){ star6(c,e.x,e.y,e.size,e.rot,e.col); }
-    });
-    yield 0.05;
-  }
-  yield 0.5;
+  G.pose = 'cast2';
+  // screen shifts into deep crimson / violet
+  yield* tween(0.7, p => {
+    G.novaGlow = 1;
+    G.novaHue = p; // 0→1 drives bg intensity
+    G.dark = 0.15 + 0.25 * p;
+  });
   sfx('big');
-  // star pattern burst (8-way)
+  G.shake = Math.max(G.shake, 8);
+  G.flash = 0.2; G.flashCol = '#ffffff';
+
+  const cx = W/2, cy = H/2 - 20;
+  // --- Phase 1: massive crystals pulled from edges ---
+  for(let i=0;i<28;i++){
+    const a = rnd(0,TAU);
+    const R = rnd(280,420);
+    const ox = cx + Math.cos(a)*R, oy = cy + Math.sin(a)*R;
+    const sp = rnd(90,140);
+    const ang = Math.atan2(cy-oy, cx-ox);
+    spawn({kind:'star', x:ox, y:oy, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
+      r:5, life:4, dmg:12, graze:0.9, rot:rnd(0,TAU), spin:rnd(1.2,2.5),
+      col:pick(['#ff6ad5','#c9a0ff','#ffe14a','#fff']), size:6, sa:ang,
+      upd(e,dt){
+        e.size = Math.min(16, e.size + dt*5);
+        e.vx *= Math.pow(0.94, dt*10); e.vy *= Math.pow(0.94, dt*10);
+      },
+      draw(c,e){
+        c.save(); c.shadowColor=e.col; c.shadowBlur=14;
+        star6(c,e.x,e.y,e.size,e.rot,e.col);
+        c.restore();
+      }
+    });
+    if(i%4===0) sfx('pop');
+    yield 0.045;
+  }
+  yield 0.4;
+
+  // --- Phase 2: dual-orbit swirling rings ---
+  for(let ring=0; ring<2; ring++){
+    const n = 14;
+    for(let i=0;i<n;i++){
+      const a0 = i/n*TAU + ring*0.4;
+      const R0 = 200 - ring*30;
+      spawn({kind:'star', x:cx, y:cy, vx:0, vy:0, r:5, life:3.2, dmg:11, graze:0.7,
+        rot:a0, spin:2.5, col:ring? '#ff2f55':'#b57bff', size:7, ang:a0, R:R0,
+        upd(e,dt){
+          e.ang += dt * (1.6 + ring*0.5) * (ring? -1:1);
+          e.R = Math.max(18, e.R - dt*70);
+          e.x = cx + Math.cos(e.ang)*e.R;
+          e.y = cy + Math.sin(e.ang)*e.R;
+          e.size = Math.min(14, e.size + dt*3);
+        },
+        draw(c,e){
+          c.save(); c.shadowColor=e.col; c.shadowBlur=12;
+          star6(c,e.x,e.y,e.size,e.rot,e.col);
+          c.restore();
+        }
+      });
+    }
+    sfx('charge');
+    yield 0.35;
+  }
+  yield 0.55;
+
+  // --- Phase 3: 8-way star nova from center ---
+  G.pose = 'slash';
+  sfx('boom'); G.shake = Math.max(G.shake, 10); G.flash = 0.15; G.flashCol = '#ffd0ff';
   for(let k=0;k<8;k++){
     const a = k/8*TAU;
-    const st = spawn({kind:'star', x:cx, y:cy, vx:Math.cos(a)*140, vy:Math.sin(a)*140,
-      r:3, life:2.5, dmg:11, graze:0.8, rot:a, spin:2, col:'#ffe14a', size:5, sa:a,
-      upd(e,dt){ e.size = Math.min(12, e.size+dt*6); },
-      draw(c,e){ star6(c,e.x,e.y,e.size,e.rot,e.col); }
+    spawn({kind:'star', x:cx, y:cy, vx:Math.cos(a)*180, vy:Math.sin(a)*180,
+      r:6, life:2.8, dmg:13, graze:1, rot:a, spin:3, col:'#fff', size:9, sa:a,
+      upd(e,dt){ e.size = Math.min(18, e.size+dt*8); },
+      draw(c,e){
+        c.save(); c.shadowColor='#ffe14a'; c.shadowBlur=18;
+        star6(c,e.x,e.y,e.size,e.rot,e.col);
+        c.restore();
+      }
     });
   }
-  yield 0.35;
-  // bursts of 3 stars
-  for(let n=0;n<6;n++){
+  yield 0.3;
+
+  // bursts of 3 large stars
+  for(let n=0;n<8;n++){
     const base = rnd(0,TAU);
     for(let k=0;k<3;k++){
-      const a = base + k*0.35 + rnd(-0.1,0.1);
-      spawn({kind:'star', x:cx+rnd(-20,20), y:cy+rnd(-15,15),
-        vx:Math.cos(a)*rnd(100,160), vy:Math.sin(a)*rnd(100,160),
-        r:3, life:2.2, dmg:10, graze:0.6, rot:a, spin:rnd(1,2.5),
-        col:pick(['#b57bff','#ff5aa5','#ffe14a']), size:4, sa:a,
-        upd(e,dt){ e.size = Math.min(11, e.size+dt*5); },
-        draw(c,e){ star6(c,e.x,e.y,e.size,e.rot,e.col); }
+      const a = base + k*0.4 + rnd(-0.12,0.12);
+      spawn({kind:'star', x:cx+rnd(-30,30), y:cy+rnd(-20,20),
+        vx:Math.cos(a)*rnd(120,190), vy:Math.sin(a)*rnd(120,190),
+        r:5, life:2.4, dmg:12, graze:0.7, rot:a, spin:rnd(1.5,3),
+        col:pick(['#ff6ad5','#b57bff','#ffe14a','#ff2f55']), size:7, sa:a,
+        upd(e,dt){ e.size = Math.min(16, e.size+dt*6); },
+        draw(c,e){
+          c.save(); c.shadowColor=e.col; c.shadowBlur=12;
+          star6(c,e.x,e.y,e.size,e.rot,e.col);
+          c.restore();
+        }
       });
     }
     sfx('pop');
-    yield 0.22;
+    yield 0.18;
   }
-  yield 0.3;
-  // explode remaining stars into shards
+  yield 0.35;
+
+  // --- Phase 4: ALL stars detonate into BIG shards ---
   const stars = G.ents.filter(e => e.kind==='star' && !e.dead);
   for(const s of stars){
     if(s.dead) continue;
     s.dead = true;
-    burst(s.x, s.y, 8, s.col, 120, 0.4, 2);
-    for(let k=0;k<6;k++){
-      const a = (s.sa||0) + k*PI/3;
-      spawn({kind:'shard', x:s.x, y:s.y, vx:Math.cos(a)*85, vy:Math.sin(a)*85,
-        r:3.4, life:1.8, fade:0.35, dmg:9, graze:0.45, col:'#e2c6ff', rot:a, draw:drawShard});
+    burst(s.x, s.y, 14, s.col, 180, 0.55, 3);
+    for(let k=0;k<8;k++){
+      const a = (s.sa||0) + k*PI/4 + rnd(-0.1,0.1);
+      const sp = rnd(95,150);
+      spawn({kind:'shard', x:s.x, y:s.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+        r:7, life:2.4, fade:0.45, dmg:12, graze:0.55,
+        col:pick(['#ffe0ff','#ff8ad0','#c9b0ff','#fff']), rot:a, spin:rnd(-3,3),
+        draw(c,e){
+          const al = e.fade?clamp(e.life/e.fade,0,1):1;
+          c.globalAlpha = al;
+          c.save(); c.translate(e.x,e.y); c.rotate(e.rot||0);
+          c.shadowColor = e.col; c.shadowBlur = 10;
+          c.fillStyle = e.col;
+          c.beginPath();
+          c.moveTo(14,0); c.lineTo(0,7); c.lineTo(-11,0); c.lineTo(0,-7);
+          c.closePath(); c.fill();
+          c.fillStyle = '#fff';
+          c.beginPath(); c.moveTo(6,0); c.lineTo(0,3); c.lineTo(-4,0); c.lineTo(0,-3);
+          c.closePath(); c.fill();
+          c.restore(); c.globalAlpha = 1;
+        }
+      });
     }
   }
-  sfx('boom'); G.shake = Math.max(G.shake, 6);
-  yield 0.55;
-  // final diagonal cut
+  sfx('boom'); sfx('crack'); G.shake = Math.max(G.shake, 12);
+  G.flash = 0.25; G.flashCol = '#ffd0ff';
+  yield 0.7;
+
+  // --- Phase 5: final dual board-wide cuts ---
   G.pose = 'slash';
-  const th = PI/4 + rnd(-0.08,0.08);
-  slashLine(cx, cy, th, {w:11, tele:0.4, dur:0.22, dmg:14, graze:2, len:1200});
-  yield 0.15;
-  slashLine(cx, cy, th+PI/2, {w:9, tele:0.28, dur:0.18, dmg:12, graze:1.5, len:1200});
-  yield 0.9;
-  yield* until(() => !G.ents.some(e => e.kind==='star'||e.kind==='shard'||e.kind==='slash'), 8);
-  yield* tween(0.4, p => { G.dark = 0.55*(1-p); });
+  const th = PI/4 + rnd(-0.1,0.1);
+  slashLine(cx, cy, th, {w:14, tele:0.45, dur:0.28, dmg:16, graze:2.5, len:1400});
+  yield 0.18;
+  slashLine(cx, cy, th+PI/2, {w:12, tele:0.32, dur:0.24, dmg:14, graze:2, len:1400});
+  yield 0.2;
+  slashLine(cx, cy, th+0.35, {w:10, tele:0.28, dur:0.2, dmg:12, graze:1.5, len:1400});
+  yield 1.1;
+
+  yield* until(() => !G.ents.some(e => e.kind==='star'||e.kind==='shard'||e.kind==='slash'), 10);
+
+  // restore normal board
+  yield* tween(0.5, p => {
+    G.novaGlow = 1 - p;
+    G.novaHue = 1 - p;
+    G.dark = 0.4 * (1-p);
+  });
+  G.novaMode = false;
+  G.boardCol = null;
+  G.boxT = Object.assign({}, BOX0);
   G.atkTint = null;
   G.pose = 'idle';
+  G.novaGlow = 0;
+  G.novaHue = 0;
 }
 
 function nextTurn(){
@@ -1758,6 +1868,7 @@ function clearAttackDebris(){
 function attackDone(){
   clearAttackDebris();
   G.phase='post';G.pt=0;G.pose='idle';G.atkTint=null;G.split=null;G.faceBoard=null;
+  G.novaMode=false;G.novaGlow=0;G.novaHue=0;G.boardCol=null;
   if(G.soul.hp<G.soul.maxhp){const heal=Math.max(1,Math.round(G.soul.maxhp*.06));G.soul.hp=Math.min(G.soul.maxhp,G.soul.hp+heal);sfx('heal');pop(G.soul.x,G.soul.y-16,'+'+heal,'#5ef78a',true);}
 }
 function winFight(){
@@ -1912,30 +2023,47 @@ function bossFloat(t,active){
   return{ox:ox+lean,oy:oy};
 }
 function drawPose(c){
-  const fl=bossFloat(G.t,G.pose!=='idle');
-  const bx=G.B.x+fl.ox,by=G.B.y+fl.oy;
+  const fl=bossFloat(G.t,G.pose!=='idle'||G.novaMode);
+  // during nova, center the knight more
+  const bx = G.novaMode ? (W/2 + fl.ox*0.4) : (G.B.x+fl.ox);
+  const by = G.novaMode ? (H/2 - 40 + fl.oy*0.4) : (G.B.y+fl.oy);
   trailTick++;
   if(!G.trail)G.trail=[];
   if(trailTick%2===0){
     G.trail.push({x:bx,y:by,t:G.t,pose:G.pose});
-    if(G.trail.length>10)G.trail.shift();
+    if(G.trail.length > (G.novaMode?16:10)) G.trail.shift();
   }
-  const active=G.pose!=='idle';
-  const ghostN=active?G.trail.length:Math.min(3,G.trail.length);
+  const active = G.pose!=='idle' || G.novaMode;
+  const ghostN = G.novaMode ? G.trail.length : (active?G.trail.length:Math.min(3,G.trail.length));
+  // strong afterimages during nova
   for(let i=0;i<Math.max(0,ghostN-1);i++){
     const gI=G.trail.length-ghostN+i;
     const g2=G.trail[gI];
     if(!g2)continue;
-    const a=(i+1)/ghostN*(active?.28:.12);
+    const a = G.novaMode
+      ? ((i+1)/ghostN) * 0.45
+      : ((i+1)/ghostN)*(active?.28:.12);
     c.save();
     c.globalAlpha=a;
     c.globalCompositeOperation='lighter';
-    G.B.draw(c,g2.x,g2.y,g2.t,{pose:g2.pose});
+    if(G.novaMode) c.filter = 'brightness(1.8)';
+    G.B.draw(c,g2.x,g2.y,g2.t,{pose:g2.pose, flash: G.novaMode ? 0.3 : 0});
     c.restore();
   }
+  // white glow aura when charging / in nova
+  if(G.novaGlow > 0){
+    const g = c.createRadialGradient(bx, by, 10, bx, by, 90 + G.novaGlow*40);
+    g.addColorStop(0, 'rgba(255,255,255,'+(0.55*G.novaGlow)+')');
+    g.addColorStop(0.4, 'rgba(255,200,255,'+(0.25*G.novaGlow)+')');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = g;
+    c.fillRect(bx-140, by-140, 280, 280);
+  }
   c.save();
-  if(G.bossFlash>0)c.filter='brightness(2.4)';
-  G.B.draw(c,bx,by,G.t,{flash:G.bossFlash,pose:G.pose});
+  if(G.bossFlash>0 || (G.novaGlow||0)>0.5){
+    c.filter = 'brightness('+(2.4 + (G.novaGlow||0)*1.5)+')';
+  }
+  G.B.draw(c,bx,by,G.t,{flash: G.bossFlash || ((G.novaGlow||0)>0.6 ? 0.5 : 0), pose:G.pose});
   c.restore();
 }
 
@@ -2163,7 +2291,7 @@ function menuFrame(dt){
   if(isTap('z','enter',' ')){
     sfx('sel');
     const key=menu.bosses[menu.sel];
-    const hp=key==='knight'?1900:300;
+    const hp=key==='knight'?3200:300;
     newFight({boss:key,soul:menu.soul?'yellow':'red',hp:100,bossHp:hp});
   }
 }
