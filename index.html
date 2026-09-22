@@ -215,11 +215,14 @@ function newFight(cfg){
     soul:{x:320,y:300,r:3.2,hp:cfg.hp||100,maxhp:cfg.hp||100,inv:0,freeze:0,kx:0,ky:0,side:1,moving:false,slow:false,charge:0,grazeFlash:0,fast:false},
     tp:0,hpBoss:cfg.bossHp,maxBoss:cfg.bossHp,guard:false,shake:0,flash:0,freeze:0,
     pose:'idle',bossFlash:0,dark:0,split:null,faceBoard:null,atkTint:null,
-    flags:{phonesHard:false,face:null,neoDone:false,holdBreath:false},
+    flags:{phonesHard:false,face:null,neoDone:false,holdBreath:false,novaDone:false},
     menuSel:0,subSel:0,menuMode:'main', // main | act | item | text
     text:'',ti:0,doneT:-1,lastN:0,msg:'',hurtThisAttack:false,q:0,neoHits:0,
     lastGraze:0,ending:false,endT:0,fb:null,anim:null,tpFlash:0,
     btnPulse:0,btnFlash:0,
+    // FIGHT timing bar
+    fightBar:null, // {t, stopped, pos, zone, result, dmg, animT}
+    slashAnims:[],
     items:[
       {id:'candy',name:'Dark Candy',desc:'Restores 40 HP.',uses:2,effect:'hp',val:40},
       {id:'tea',name:'Choco Tea',desc:'Restores 60 HP.',uses:1,effect:'hp',val:60},
@@ -1405,6 +1408,10 @@ const BOSSES={
     ],
     loopFrom:10,
     run(a){
+      // Crystal Nova once when HP drops to 75% or below
+      if(!G.flags.novaDone && G.hpBoss <= G.maxBoss * 0.75){
+        return atkCrystalNova();
+      }
       if(a.a==='stars')return atkStars(a.v);
       if(a.a==='tracking')return atkTracking(a.v);
       if(a.a==='splitter')return atkSplitter(a.v);
@@ -1444,6 +1451,276 @@ const BOSSES={
 };
 
 /* ---------- turn flow ---------- */
+/* ---------- FIGHT timing bar + slash anim ---------- */
+function startFightBar(){
+  // zone centered-ish with slight randomness so it's not always identical
+  const zone = 0.38 + rnd(-0.04, 0.06);
+  G.fightBar = {
+    t:0, stopped:false, pos:1.08, // starts off the right
+    zone, zoneW:0.07,
+    result:null, dmg:0, label:'',
+    animT:0, done:false, pressLock:false
+  };
+  G.phase = 'fightBar';
+  G.pose = 'idle';
+  sfx('sel');
+}
+function scoreFightBar(pos, zone, zoneW){
+  const dist = Math.abs(pos - zone);
+  if(dist <= zoneW * 0.28) return {tier:'perfect', dmg:76, label:'PERFECT!'};
+  if(dist <= zoneW * 0.7)  return {tier:'great',   dmg:rint(52,60), label:'GREAT'};
+  if(dist <= zoneW * 1.35) return {tier:'ok',      dmg:rint(26,34), label:'OK'};
+  return {tier:'miss', dmg:0, label:'MISS'};
+}
+function resolveFightBar(){
+  const fb = G.fightBar;
+  if(!fb || fb.stopped) return;
+  fb.stopped = true;
+  fb.pos = clamp(fb.pos, 0, 1);
+  const sc = scoreFightBar(fb.pos, fb.zone, fb.zoneW);
+  fb.result = sc.tier;
+  fb.dmg = sc.dmg;
+  fb.label = sc.label;
+  fb.animT = 0;
+  if(sc.dmg > 0){
+    sfx('slash');
+    // spawn slash animation toward knight
+    const fl = bossFloat(G.t, false);
+    const tx = G.B.x + fl.ox, ty = G.B.y + fl.oy + 20;
+    G.slashAnims.push({
+      x: 320, y: 360, tx, ty, t:0, life:0.45,
+      hit:false, dmg:sc.dmg, big:sc.tier==='perfect'
+    });
+  } else {
+    sfx('no');
+  }
+}
+function updateFightBar(dt){
+  const fb = G.fightBar;
+  if(!fb) return;
+  fb.t += dt;
+  if(!fb.stopped){
+    // marker sweeps right → left (Undertale style: comes from right)
+    // speed eases slightly
+    const spd = 1.15 + Math.min(0.35, fb.t * 0.08);
+    fb.pos -= spd * dt;
+    if(fb.pos < -0.05){
+      // ran off without pressing
+      fb.pos = -0.05;
+      resolveFightBar();
+    }
+    if(isTap('z','enter',' ')) resolveFightBar();
+  } else {
+    fb.animT += dt;
+    // wait for slash anim + brief result display
+    const wait = fb.dmg > 0 ? 0.7 : 0.55;
+    if(fb.animT >= wait && !fb.done){
+      fb.done = true;
+      if(fb.dmg > 0){
+        // damage already applied when slash hits; ensure applied
+        if(!fb.applied){
+          dmgBoss(fb.dmg, {x:G.B.x, y:G.B.y+20});
+          G.shake = Math.max(G.shake, fb.result==='perfect'?10:6);
+          G.bossFlash = 0.18;
+          G.pose = 'slash';
+          fb.applied = true;
+        }
+      } else {
+        pop(320, 250, 'MISS', '#9a8fc9', true);
+      }
+      // after result, go into boss attack
+      startAttack();
+      G.fightBar = null;
+    }
+  }
+}
+function updateSlashAnims(dt){
+  for(const s of G.slashAnims){
+    s.t += dt;
+    const p = Math.min(1, s.t / 0.28);
+    const e = easeOut(p);
+    s.x = lerp(320, s.tx, e);
+    s.y = lerp(360, s.ty, e);
+    if(!s.hit && p >= 1){
+      s.hit = true;
+      // apply damage on impact if fightBar still waiting
+      if(G.fightBar && !G.fightBar.applied){
+        dmgBoss(s.dmg, {x:s.tx, y:s.ty});
+        G.fightBar.applied = true;
+        G.shake = Math.max(G.shake, s.big?12:7);
+        G.bossFlash = 0.2;
+        G.pose = 'slash';
+        burst(s.tx, s.ty, s.big?18:10, '#ffe14a', 160, 0.5, 3);
+        if(s.big){ G.flash = 0.12; G.flashCol = '#ffe14a'; }
+      }
+    }
+  }
+  G.slashAnims = G.slashAnims.filter(s => s.t < s.life);
+}
+function drawFightBar(c){
+  const fb = G.fightBar;
+  if(!fb || G.phase !== 'fightBar') return;
+  const bx = 80, by = 340, bw = 480, bh = 28;
+  // plate
+  c.fillStyle = 'rgba(0,0,0,0.75)';
+  c.fillRect(bx-4, by-8, bw+8, bh+36);
+  c.strokeStyle = '#5b3fc4'; c.lineWidth = 2;
+  c.strokeRect(bx-4, by-8, bw+8, bh+36);
+  // track
+  c.fillStyle = '#1a1030';
+  c.fillRect(bx, by, bw, bh);
+  c.strokeStyle = '#fff'; c.lineWidth = 2;
+  c.strokeRect(bx, by, bw, bh);
+  // glowing zone
+  const zx = bx + fb.zone * bw;
+  const zw = fb.zoneW * bw;
+  const pulse = 0.55 + 0.45 * Math.abs(Math.sin(G.t * 6));
+  c.fillStyle = 'rgba(255,225,74,' + (0.25 * pulse) + ')';
+  c.fillRect(zx - zw/2, by+2, zw, bh-4);
+  c.strokeStyle = 'rgba(255,225,74,' + pulse + ')';
+  c.lineWidth = 2;
+  c.strokeRect(zx - zw/2, by+2, zw, bh-4);
+  // center line of zone
+  c.strokeStyle = '#ffe14a'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(zx, by+2); c.lineTo(zx, by+bh-2); c.stroke();
+  // marker
+  const mx = bx + clamp(fb.pos, 0, 1) * bw;
+  c.fillStyle = fb.stopped ? (fb.dmg>0 ? '#fff' : '#ff6a7d') : '#ff2a4d';
+  c.fillRect(mx-3, by-4, 6, bh+8);
+  c.strokeStyle = '#fff'; c.lineWidth = 1;
+  c.strokeRect(mx-3, by-4, 6, bh+8);
+  // label
+  if(fb.stopped){
+    const col = fb.result==='perfect' ? '#ffe14a' : fb.result==='miss' ? '#ff6a7d' : '#fff';
+    text(c, fb.label, W/2, by-18, fb.result==='perfect'?14:11, col, 'center');
+    if(fb.dmg>0) text(c, String(fb.dmg), W/2, by+bh+22, 12, '#ffe14a', 'center');
+  } else {
+    text(c, 'Z / ENTER — stop the bar!', W/2, by+bh+20, 8, '#9a8fc9', 'center');
+  }
+}
+function drawSlashAnims(c){
+  for(const s of G.slashAnims){
+    const a = 1 - s.t / s.life;
+    c.save();
+    c.globalAlpha = Math.max(0, a);
+    const ang = Math.atan2(s.ty - 360, s.tx - 320);
+    // trail
+    c.strokeStyle = s.big ? '#ffe14a' : '#c9d0ff';
+    c.lineWidth = s.big ? 5 : 3;
+    c.shadowColor = s.big ? '#ffe14a' : '#8b5cff';
+    c.shadowBlur = 12;
+    c.beginPath();
+    c.moveTo(s.x - Math.cos(ang)*40, s.y - Math.sin(ang)*40);
+    c.lineTo(s.x + Math.cos(ang)*20, s.y + Math.sin(ang)*20);
+    c.stroke();
+    // blade tip
+    drawSword(c, s.x, s.y, ang, s.big?70:52, s.big?10:7, s.big?'#fff':'#e7ecff', s.big?'#ffe14a':'#8b5cff');
+    c.restore();
+  }
+}
+
+/* ---------- Crystal Nova ---------- */
+function* atkCrystalNova(){
+  G.pose = 'cast';
+  G.flags.novaDone = true;
+  G.atkTint = '180,80,255';
+  G.dark = 0;
+  G.msg = 'The Knight gathers an unfathomable light...';
+  const b = G.box, cx = b.x + b.w/2, cy = b.y + b.h/2;
+  // cinematic: darken + knight presence
+  yield* tween(0.6, p => { G.dark = 0.55 * p; });
+  sfx('charge');
+  // pull phase — crystals drift inward from edges
+  for(let i=0;i<18;i++){
+    const side = i%2===0 ? -1 : 1;
+    const ox = side < 0 ? b.x - 20 : b.x + b.w + 20;
+    const oy = rnd(b.y+10, b.y+b.h-10);
+    const targetX = cx + rnd(-40,40), targetY = cy + rnd(-30,30);
+    const sp = rnd(70,110);
+    const a = Math.atan2(targetY-oy, targetX-ox);
+    spawn({kind:'star', x:ox, y:oy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+      r:3, life:3.5, dmg:10, graze:0.7, rot:rnd(0,TAU), spin:rnd(1,2),
+      col:'#b57bff', size:3,
+      upd(e,dt){ e.size = Math.min(10, e.size + dt*4); e.vx *= Math.pow(0.92, dt*10); e.vy *= Math.pow(0.92, dt*10); },
+      draw(c,e){ star6(c,e.x,e.y,e.size,e.rot,e.col); }
+    });
+    if(i%3===0) sfx('pop');
+    yield 0.07;
+  }
+  yield 0.35;
+  // swirling ring pull
+  for(let i=0;i<12;i++){
+    const a0 = i/12*TAU + G.t;
+    const R = 160;
+    const ox = cx + Math.cos(a0)*R, oy = cy + Math.sin(a0)*R;
+    spawn({kind:'star', x:ox, y:oy, vx:0, vy:0, r:3, life:2.2, dmg:10, graze:0.6,
+      rot:a0, spin:2, col:'#ff5aa5', size:4, ang:a0, R,
+      upd(e,dt){
+        e.ang += dt * 1.8;
+        e.R = Math.max(20, e.R - dt*90);
+        e.x = cx + Math.cos(e.ang)*e.R;
+        e.y = cy + Math.sin(e.ang)*e.R;
+      },
+      draw(c,e){ star6(c,e.x,e.y,e.size,e.rot,e.col); }
+    });
+    yield 0.05;
+  }
+  yield 0.5;
+  sfx('big');
+  // star pattern burst (8-way)
+  for(let k=0;k<8;k++){
+    const a = k/8*TAU;
+    const st = spawn({kind:'star', x:cx, y:cy, vx:Math.cos(a)*140, vy:Math.sin(a)*140,
+      r:3, life:2.5, dmg:11, graze:0.8, rot:a, spin:2, col:'#ffe14a', size:5, sa:a,
+      upd(e,dt){ e.size = Math.min(12, e.size+dt*6); },
+      draw(c,e){ star6(c,e.x,e.y,e.size,e.rot,e.col); }
+    });
+  }
+  yield 0.35;
+  // bursts of 3 stars
+  for(let n=0;n<6;n++){
+    const base = rnd(0,TAU);
+    for(let k=0;k<3;k++){
+      const a = base + k*0.35 + rnd(-0.1,0.1);
+      spawn({kind:'star', x:cx+rnd(-20,20), y:cy+rnd(-15,15),
+        vx:Math.cos(a)*rnd(100,160), vy:Math.sin(a)*rnd(100,160),
+        r:3, life:2.2, dmg:10, graze:0.6, rot:a, spin:rnd(1,2.5),
+        col:pick(['#b57bff','#ff5aa5','#ffe14a']), size:4, sa:a,
+        upd(e,dt){ e.size = Math.min(11, e.size+dt*5); },
+        draw(c,e){ star6(c,e.x,e.y,e.size,e.rot,e.col); }
+      });
+    }
+    sfx('pop');
+    yield 0.22;
+  }
+  yield 0.3;
+  // explode remaining stars into shards
+  const stars = G.ents.filter(e => e.kind==='star' && !e.dead);
+  for(const s of stars){
+    if(s.dead) continue;
+    s.dead = true;
+    burst(s.x, s.y, 8, s.col, 120, 0.4, 2);
+    for(let k=0;k<6;k++){
+      const a = (s.sa||0) + k*PI/3;
+      spawn({kind:'shard', x:s.x, y:s.y, vx:Math.cos(a)*85, vy:Math.sin(a)*85,
+        r:3.4, life:1.8, fade:0.35, dmg:9, graze:0.45, col:'#e2c6ff', rot:a, draw:drawShard});
+    }
+  }
+  sfx('boom'); G.shake = Math.max(G.shake, 6);
+  yield 0.55;
+  // final diagonal cut
+  G.pose = 'slash';
+  const th = PI/4 + rnd(-0.08,0.08);
+  slashLine(cx, cy, th, {w:11, tele:0.4, dur:0.22, dmg:14, graze:2, len:1200});
+  yield 0.15;
+  slashLine(cx, cy, th+PI/2, {w:9, tele:0.28, dur:0.18, dmg:12, graze:1.5, len:1200});
+  yield 0.9;
+  yield* until(() => !G.ents.some(e => e.kind==='star'||e.kind==='shard'||e.kind==='slash'), 8);
+  yield* tween(0.4, p => { G.dark = 0.55*(1-p); });
+  G.atkTint = null;
+  G.pose = 'idle';
+}
+
 function nextTurn(){
   G.turn++;
   const seq=G.B.seq;
@@ -1717,9 +1994,8 @@ function updateGame(dt){
       if(isTap('arrowright','d')){G.menuSel=(G.menuSel+1)%4;sfx('sel');}
       if(isTap('z','enter',' ')){
         sfx('sel');G.btnFlash=.25;
-        if(G.menuSel===0){ // FIGHT
-          const dmg=rnd(6,12)+G.tp*.12;G.tp=0;dmgBoss(dmg,{x:G.B.x,y:G.B.y});sfx('boom');G.shake=6;
-          startAttack();
+        if(G.menuSel===0){ // FIGHT — timing bar
+          startFightBar();
         }else if(G.menuSel===1){ // ACT submenu
           G.menuMode='act';G.subSel=0;
         }else if(G.menuSel===2){ // ITEM submenu
@@ -1755,6 +2031,12 @@ function updateGame(dt){
       G.pt+=dt;
       if(isTap('z','enter',' ')||G.pt>2.4){G.menuMode='main';G.msg=G.turnDef?G.turnDef.txt:'';startAttack();}
     }
+    return;
+  }
+  if(G.phase==='fightBar'){
+    updateFX(dt);
+    updateFightBar(dt);
+    updateSlashAnims(dt);
     return;
   }
   if(G.phase==='toAttack'){
@@ -1795,6 +2077,7 @@ function renderGame(){
   for(const e of ents){if(e.draw)e.draw(c,e);}
   for(const sh of G.shots){c.fillStyle=sh.big?'#fff3b0':'#fff';c.beginPath();c.arc(sh.x,sh.y,sh.r,0,TAU);c.fill();if(sh.big){c.strokeStyle='#ffe14a';c.lineWidth=2;c.stroke();}}
   drawSoul(c);
+  drawSlashAnims(c);
   drawFX(c);
   if(G.faceBoard){
     // face board frame redrawn on top edge only (already boxed)
@@ -1805,6 +2088,13 @@ function renderGame(){
   if(G.phase==='menu'||G.phase==='post'||G.phase==='toAttack'){
     c.fillRect(bx.x,bx.y,bx.w,bx.h);c.strokeRect(bx.x,bx.y,bx.w,bx.h);
     drawTextBox(c);
+  }
+  if(G.phase==='fightBar'){
+    // dim menu box area and show timing bar
+    c.fillStyle='rgba(0,0,0,0.55)';
+    c.fillRect(bx.x, bx.y, bx.w, bx.h);
+    c.strokeStyle='#5b3fc4';c.lineWidth=3;c.strokeRect(bx.x,bx.y,bx.w,bx.h);
+    drawFightBar(c);
   }
   if(G.phase==='attack'&&!G.split){/* board already drawn */}
   if(G.flash>0){c.fillStyle=(G.flashCol?hexA(G.flashCol,Math.min(.7,G.flash)):'rgba(255,255,255,'+Math.min(.7,G.flash)+')');c.fillRect(0,0,W,H);}
@@ -1873,7 +2163,7 @@ function menuFrame(dt){
   if(isTap('z','enter',' ')){
     sfx('sel');
     const key=menu.bosses[menu.sel];
-    const hp=key==='knight'?220:300;
+    const hp=key==='knight'?1900:300;
     newFight({boss:key,soul:menu.soul?'yellow':'red',hp:100,bossHp:hp});
   }
 }
