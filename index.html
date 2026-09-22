@@ -175,20 +175,32 @@ function heartPath(c,x,y,s){
   c.closePath();
 }
 function star6(c,x,y,R,rot,col){
-  c.save();c.translate(x,y);c.rotate(rot);c.fillStyle=col;
-  for(let k=0;k<2;k++){
-    c.beginPath();
-    for(let i=0;i<3;i++){const a=i*TAU/3+(k?PI/3:0)-PI/2;c.lineTo(Math.cos(a)*R,Math.sin(a)*R);}
-    c.closePath();c.fill();
+  c.save();c.translate(x,y);c.rotate(rot);
+  c.shadowColor=col;c.shadowBlur=7;
+  c.fillStyle=col;
+  const n=8;
+  c.beginPath();
+  for(let i=0;i<n*2;i++){
+    const a=i*PI/n-PI/2,rr=(i%2===0)?R:R*.32;
+    const px=Math.cos(a)*rr,py=Math.sin(a)*rr;
+    i?c.lineTo(px,py):c.moveTo(px,py);
   }
+  c.closePath();c.fill();
+  c.shadowBlur=0;
+  c.strokeStyle='rgba(255,255,255,.85)';c.lineWidth=1;c.stroke();
+  c.fillStyle='#fff';c.beginPath();c.arc(0,0,R*.16,0,TAU);c.fill();
   c.restore();
 }
 function drawSword(c,x,y,ang,len,w,col,glow){
   c.save();c.translate(x,y);c.rotate(ang);
-  if(glow){c.shadowColor=glow;c.shadowBlur=10;}
+  if(glow){c.shadowColor=glow;c.shadowBlur=12;}
   c.fillStyle=col;
-  c.beginPath();c.moveTo(len/2,0);c.lineTo(len/2-10,-w/2);c.lineTo(-len/2+8,-w/2);c.lineTo(-len/2+8,w/2);c.lineTo(len/2-10,w/2);c.closePath();c.fill();
+  c.beginPath();
+  c.moveTo(len/2,0);c.lineTo(len/2-18,-w*.42);c.lineTo(-len/2+10,-w*.5);
+  c.lineTo(-len/2-6,0);c.lineTo(-len/2+10,w*.5);c.lineTo(len/2-18,w*.42);
+  c.closePath();c.fill();
   c.shadowBlur=0;
+  c.strokeStyle='rgba(255,255,255,.55)';c.lineWidth=1;c.stroke();
   c.fillStyle='#8a7cff';c.fillRect(-len/2+8,-w*.9,3,w*1.8);
   c.fillStyle='#3b2d7a';c.fillRect(-len/2,-w*.25,8,w*.5);
   c.restore();
@@ -198,11 +210,11 @@ function drawSword(c,x,y,ang,len,w,col,glow){
 function newFight(cfg){
   G={
     cfg,B:BOSSES[cfg.boss],t:0,dt:0,turn:0,turnDef:null,phase:'text',pt:0,
-    ents:[],shots:[],parts:[],pops:[],cos:[],
+    ents:[],shots:[],parts:[],pops:[],cos:[],soulEchoes:[],
     box:Object.assign({},MENUBOX),boxT:Object.assign({},MENUBOX),
-    soul:{x:320,y:300,r:3.2,hp:cfg.hp||100,maxhp:cfg.hp||100,inv:0,freeze:0,kx:0,ky:0,side:1,moving:false,slow:false,charge:0},
+    soul:{x:320,y:300,r:3.2,hp:cfg.hp||100,maxhp:cfg.hp||100,inv:0,freeze:0,kx:0,ky:0,side:1,moving:false,slow:false,charge:0,grazeFlash:0},
     tp:0,hpBoss:cfg.bossHp,maxBoss:cfg.bossHp,guard:false,shake:0,flash:0,freeze:0,
-    pose:'idle',bossFlash:0,dark:0,split:null,faceBoard:null,
+    pose:'idle',bossFlash:0,dark:0,split:null,faceBoard:null,atkTint:null,
     flags:{phonesHard:false,face:null,neoDone:false},
     menuSel:0,text:'',ti:0,doneT:-1,lastN:0,msg:'',hurtThisAttack:false,q:0,neoHits:0,
     lastGraze:0,ending:false,endT:0,fb:null,anim:null,tpFlash:0
@@ -278,6 +290,7 @@ function constrainSoul(){
 function updateSoul(dt){
   const s=G.soul;
   if(s.inv>0)s.inv-=dt;
+  if(s.grazeFlash>0)s.grazeFlash=Math.max(0,s.grazeFlash-dt);
   if(s.freeze>0)s.freeze-=dt;
   else{
     let dx=(isDown('arrowright','d')?1:0)-(isDown('arrowleft','a')?1:0);
@@ -351,6 +364,10 @@ function updateEnts(dt){
       if(d<s.r)hurt(e.dmg,e.inv);
       else if(d<12&&!e.grazed&&e.graze>0){
         e.grazed=true;addTP(e.graze);
+        s.grazeFlash=.2;
+        if(!G.soulEchoes)G.soulEchoes=[];
+        G.soulEchoes.push({x:s.x,y:s.y,life:.3,max:.3,col:G.cfg.soul==='yellow'?'#ffe83a':'#ff2a4d'});
+        if(G.soulEchoes.length>8)G.soulEchoes.shift();
         if(G.t-G.lastGraze>.06){sfx('graze');G.lastGraze=G.t;}
         G.parts.push({x:s.x,y:s.y,vx:rnd(-40,40),vy:rnd(-40,40),life:.25,max:.25,size:2,col:'#fff'});
       }
@@ -379,6 +396,13 @@ function drawBg(c){
     for(let y=-32;y<H+32;y+=32){c.beginPath();c.moveTo(0,y+off);c.lineTo(W,y+off);c.stroke();}
   }
   drawBeamRig(c,bx,by,th);
+  if(G.atkTint){
+    const pulse=.14+.09*Math.abs(Math.sin(G.t*2.4));
+    c.fillStyle='rgba('+G.atkTint+','+pulse+')';c.fillRect(0,0,W,H);
+    const vg=c.createRadialGradient(W/2,H/2,60,W/2,H/2,380);
+    vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba('+G.atkTint+',.28)');
+    c.fillStyle=vg;c.fillRect(0,0,W,H);
+  }
 }
 function drawBeamRig(c,bx,by,th){
   // descending stage-light beams behind the boss, like the reference shots
@@ -406,9 +430,9 @@ function drawBoard(c){
       const ax=sp.cx-dx*L,ay=sp.cy-dy*L,bx=sp.cx+dx*L,by=sp.cy+dy*L,ox=sp.nx*side*L,oy=sp.ny*side*L;
       c.beginPath();c.moveTo(ax,ay);c.lineTo(bx,by);c.lineTo(bx+ox,by+oy);c.lineTo(ax+ox,ay+oy);c.closePath();c.clip();
       c.fillStyle='#000';c.fillRect(b.x,b.y,b.w,b.h);
-      c.strokeStyle='#fff';c.lineWidth=3;c.strokeRect(b.x,b.y,b.w,b.h);
+      c.strokeStyle='#3dff7a';c.lineWidth=3;c.strokeRect(b.x,b.y,b.w,b.h);
       c.beginPath();c.rect(b.x-2,b.y-2,b.w+4,b.h+4);c.clip();
-      c.strokeStyle='#8fe3ff';c.lineWidth=5;c.beginPath();c.moveTo(ax,ay);c.lineTo(bx,by);c.stroke();
+      c.strokeStyle='#ff2f55';c.lineWidth=5;c.beginPath();c.moveTo(ax,ay);c.lineTo(bx,by);c.stroke();
       c.restore();
     }
   }else{
@@ -427,12 +451,21 @@ function drawSoul(c){
   if(G.phase==='toAttack')return;
   const blink=s.inv>0&&Math.floor(s.inv*16)%2===0;
   const col=G.cfg.soul==='yellow'?'#ffe83a':'#ff2a4d';
+  if(G.soulEchoes)for(const e of G.soulEchoes){
+    c.globalAlpha=Math.max(0,e.life/e.max)*.55;
+    c.fillStyle=e.col;heartPath(c,e.x,e.y,5.4*(0.85+0.3*(1-e.life/e.max)));c.fill();
+  }
+  c.globalAlpha=1;
   if(s.charge>.1&&G.cfg.soul==='yellow'){
     const f=Math.min(1,s.charge/.7);
     c.fillStyle='rgba(255,232,58,'+(.15+.35*f)+')';c.beginPath();c.arc(s.x,s.y,6+f*12+(f>=1?Math.sin(G.t*40)*2:0),0,TAU);c.fill();
   }
   if(s.slow){c.strokeStyle='rgba(255,255,255,.35)';c.lineWidth=1;c.beginPath();c.arc(s.x,s.y,10,0,TAU);c.stroke();}
-  c.fillStyle=blink?'#fff':col;heartPath(c,s.x,s.y,5.4);c.fill();
+  if(s.grazeFlash>0){
+    c.strokeStyle='rgba(255,232,58,'+(s.grazeFlash/0.2)+')';c.lineWidth=1.4;
+    c.beginPath();c.arc(s.x,s.y,7+(1-s.grazeFlash/0.2)*7,0,TAU);c.stroke();
+  }
+  c.fillStyle=(blink||s.grazeFlash>0.1)?'#fff':col;heartPath(c,s.x,s.y,5.4);c.fill();
   if(G.cfg.soul==='yellow'){c.fillStyle=blink?'#fff':'#ffb800';c.fillRect(s.x-1.5,s.y-11,3,5);}
 }
 /* ===================== ROARING KNIGHT ===================== */
@@ -453,6 +486,7 @@ function drawDia(c,e){
 function* atkStars(v){
   const b=G.box,P=G.B.palm;
   G.pose='cast';
+  G.atkTint=v===1?'160,90,255':v===2?'220,40,60':'255,40,190';
   const n=v===3?18:26,col=v===1?'#b57bff':v===2?'#ffd23f':'#ff5aa5';
   const stars=[];
   const base=Math.atan2((b.y+b.h*.55)-P.y,(b.x+b.w*.3)-P.x);
@@ -487,6 +521,7 @@ function* atkStars(v){
   }
   yield .2;
   yield* until(()=>!G.ents.some(e=>e.kind==='star'||e.kind==='shard'||e.kind==='rshard'),12);
+  G.atkTint=null;
   G.pose='idle';
 }
 function starBurst(s,v){
@@ -613,13 +648,13 @@ function* doCut(mode,v){
     draw(c,e){
       const a=Math.min(1,e.t/.5);
       c.save();c.beginPath();c.rect(b.x,b.y,b.w,b.h);c.clip();
-      c.strokeStyle='rgba(143,227,255,'+(.25+.7*a)+')';c.lineWidth=1+3*a;
+      c.strokeStyle='rgba(255,60,90,'+(.25+.7*a)+')';c.lineWidth=1+3*a;
       c.beginPath();c.moveTo(ccx-dx*500,ccy-dy*500);c.lineTo(ccx+dx*500,ccy+dy*500);c.stroke();
       c.restore();
     }});
   sfx('warn');
   yield .5;
-  G.flash=.16;G.flashCol='#bfefff';sfx('crack');G.shake=Math.max(G.shake,8);
+  G.flash=.16;G.flashCol='#ffdce2';sfx('crack');G.shake=Math.max(G.shake,8);
   const d=(s.x-ccx)*nx+(s.y-ccy)*ny;
   if(Math.abs(d)<12+s.r)cleave(nx,ny,d);
   const sp=G.split={cx:ccx,cy:ccy,nx,ny,th,off:0};
@@ -1408,17 +1443,17 @@ function drawPose(c){
   const bx=G.B.x,by=G.B.y;
   trailTick++;
   if(!G.trail)G.trail=[];
-  if(trailTick%3===0){
+  if(trailTick%2===0){
     G.trail.push({x:bx,y:by,t:G.t,pose:G.pose});
-    if(G.trail.length>6)G.trail.shift();
+    if(G.trail.length>10)G.trail.shift();
   }
   const active=G.pose!=='idle';
-  const ghostN=active?G.trail.length:Math.min(2,G.trail.length);
+  const ghostN=active?G.trail.length:Math.min(3,G.trail.length);
   for(let i=0;i<Math.max(0,ghostN-1);i++){
     const gI=G.trail.length-ghostN+i;
     const g2=G.trail[gI];
     if(!g2)continue;
-    const a=(i+1)/ghostN*(active?.22:.1);
+    const a=(i+1)/ghostN*(active?.28:.12);
     c.save();
     c.globalAlpha=a;
     c.globalCompositeOperation='lighter';
@@ -1435,6 +1470,7 @@ function drawPose(c){
 function updateFX(dt){
   for(const p of G.parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.9;p.vy*=.9;p.life-=dt;}
   G.parts=G.parts.filter(p=>p.life>0);
+  if(G.soulEchoes){for(const e of G.soulEchoes)e.life-=dt;G.soulEchoes=G.soulEchoes.filter(e=>e.life>0);}
   for(const p of G.pops){p.t+=dt;p.y-=dt*22;}
   G.pops=G.pops.filter(p=>p.t<.9);
   const rdt=G.rawDt||dt;
