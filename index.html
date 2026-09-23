@@ -217,7 +217,7 @@ function newFight(cfg){
     tp:0,hpBoss:cfg.bossHp,maxBoss:cfg.bossHp,guard:false,shake:0,flash:0,freeze:0,
     pose:'idle',bossFlash:0,dark:0,split:null,faceBoard:null,atkTint:null,
     flags:{phonesHard:false,face:null,neoDone:false,holdBreath:false,novaDone:false},
-    novaMode:false,novaGlow:0,novaHue:0,novaFinale:false,novaShattered:false,glitchT:0,fleeT:0,
+    novaMode:false,novaGlow:0,novaHue:0,novaRage:0,novaFinale:false,novaShattered:false,glitchT:0,fleeT:0,
     menuSel:0,subSel:0,menuMode:'main',
     text:'',ti:0,doneT:-1,lastN:0,msg:'',hurtThisAttack:false,q:0,neoHits:0,
     lastGraze:0,ending:false,endT:0,fb:null,anim:null,tpFlash:0,
@@ -398,14 +398,38 @@ function drawBg(c){
   const th=G.B.theme,bx=G.B.x,by=G.B.y;
   if(G.novaMode){
     const hue = G.novaHue||0;
+    const rage = G.novaRage||0;
+    // Base pink/purple nova field
     const g=c.createRadialGradient(W/2,H/2-20,20,W/2,H/2-20,420);
     g.addColorStop(0, 'rgba('+(180+75*hue)+','+(20+40*hue)+','+(60+120*hue)+','+(0.55+0.25*hue)+')');
     g.addColorStop(0.45, 'rgba('+(90+40*hue)+',10,'+(40+80*hue)+',0.85)');
     g.addColorStop(1, 'rgba(10,0,20,1)');
     c.fillStyle=g;c.fillRect(0,0,W,H);
+    // Strong red rage overlay when crystals are released
+    if(rage > 0.02){
+      const pulse = 0.55 + 0.45*Math.abs(Math.sin(G.t*9));
+      const rg=c.createRadialGradient(W/2,H/2-20,10,W/2,H/2-20,380);
+      rg.addColorStop(0, 'rgba(255,30,50,'+(0.45*rage*pulse)+')');
+      rg.addColorStop(0.4, 'rgba(220,10,40,'+(0.28*rage)+')');
+      rg.addColorStop(1, 'rgba(80,0,20,'+(0.18*rage)+')');
+      c.fillStyle=rg;c.fillRect(0,0,W,H);
+      // Extra red rays on rage
+      c.save();
+      c.globalAlpha = 0.18 * rage * pulse;
+      c.strokeStyle = '#ff4060';
+      c.lineWidth = 3;
+      for(let i=0;i<10;i++){
+        const a=i/10*TAU + G.t*0.22;
+        c.beginPath();
+        c.moveTo(W/2, H/2-20);
+        c.lineTo(W/2+Math.cos(a)*720, H/2-20+Math.sin(a)*720);
+        c.stroke();
+      }
+      c.restore();
+    }
     c.save();
-    c.globalAlpha = 0.12 + 0.1*hue;
-    c.strokeStyle = '#ffb0d0';
+    c.globalAlpha = 0.12 + 0.1*hue + 0.08*rage;
+    c.strokeStyle = rage>0.1 ? '#ff8090' : '#ffb0d0';
     c.lineWidth = 2;
     const rays = 14;
     for(let i=0;i<rays;i++){
@@ -1643,36 +1667,40 @@ function* atkCrystalNova(){
   G.boardCol = 'rgba(255,255,255,0)';
   G.novaGlow = 0;
   G.novaHue = 0;
+  G.novaRage = 0; // 0–1 red pulse intensity during rage release
 
-  yield* tween(1.2, p => {
+  // ~2s build-up
+  yield* tween(1.4, p => {
     G.novaGlow = p;
-    G.dark = 0.12 * p;
-    G.novaHue = p * 0.35;
+    G.dark = 0.14 * p;
+    G.novaHue = p * 0.4;
   });
   sfx('charge');
-  yield* tween(0.5, p => {
+  yield* tween(0.6, p => {
     G.novaGlow = 1;
-    G.novaHue = 0.35 + 0.65 * p;
-    G.dark = 0.12 + 0.2 * p;
+    G.novaHue = 0.4 + 0.6 * p;
+    G.dark = 0.14 + 0.22 * p;
   });
   sfx('big');
-  G.shake = Math.max(G.shake, 6);
-  G.flash = 0.15; G.flashCol = '#ffffff';
+  G.shake = Math.max(G.shake, 7);
+  G.flash = 0.18; G.flashCol = '#ffffff';
 
   const cx = W/2, cy = H/2 - 40;
   const crystals = [];
 
-  // trimmed crystal counts (was 8/12/10/6 = 36) for far fewer simultaneous entities
+  // More crystals, staggered over ~11s of incoming waves (total attack ~25s)
   const patterns = [
-    { n:6,  R:[300,380], delay:0.00, size:[18,26], sp:[70,100], spin:1.2 },
-    { n:8,  R:[260,340], delay:0.55, size:[14,20], sp:[85,120], spin:1.8 },
-    { n:7,  R:[280,400], delay:1.15, size:[16,26], sp:[60,110], spin:2.2 },
-    { n:4,  R:[320,420], delay:1.75, size:[20,30], sp:[90,130], spin:1.0 },
+    { n:11, R:[300,400], delay:0.00, size:[16,24], sp:[60,90],  spin:1.1 },
+    { n:13, R:[260,360], delay:0.90, size:[14,22], sp:[75,110], spin:1.6 },
+    { n:14, R:[280,420], delay:1.85, size:[15,26], sp:[65,105], spin:2.0 },
+    { n:12, R:[240,340], delay:2.90, size:[18,28], sp:[80,120], spin:1.4 },
+    { n:13, R:[300,440], delay:3.95, size:[16,30], sp:[70,125], spin:2.4 },
+    { n:10, R:[320,460], delay:5.00, size:[20,32], sp:[85,135], spin:1.0 },
   ];
 
   for(const pat of patterns){
     for(let i=0;i<pat.n;i++){
-      const a = (i/pat.n)*TAU + rnd(-0.15,0.15) + pat.delay;
+      const a = (i/pat.n)*TAU + rnd(-0.18,0.18) + pat.delay*0.12;
       const R = rnd(pat.R[0], pat.R[1]);
       const ox = cx + Math.cos(a)*R, oy = cy + Math.sin(a)*R;
       const sz = rnd(pat.size[0], pat.size[1]);
@@ -1680,76 +1708,105 @@ function* atkCrystalNova(){
       const ang = Math.atan2(cy-oy, cx-ox);
       const e = spawn({
         kind:'star', x:ox, y:oy, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
-        r: sz*0.45, life:12, dmg:11, graze:0.8, harm:true,
+        r: sz*0.42, life:22, dmg:11, graze:0.75, harm:true,
         rot:rnd(0,TAU), spin:pat.spin*(i%2?1:-1),
-        col:pick(['#ff6ad5','#c9a0ff','#ffe14a','#fff','#ff2f55','#e0c0ff']),
-        size:sz, targetSize:sz, sa:ang, phase:'in',
+        col:pick(['#ff6ad5','#c9a0ff','#ffe14a','#fff','#ff2f55','#e0c0ff','#ff9de6']),
+        size:sz, targetSize:sz, sa:ang, phase:'in', alpha:1,
         draw(c,e){
+          // Transparent while gathered at the Knight (performance + visual intent)
+          const a = (e.phase==='held') ? 0.18 : (e.alpha!=null?e.alpha:1);
+          if(a < 0.05) return;
+          c.save();
+          c.globalAlpha = a;
           star6(c, e.x, e.y, e.size, e.rot, e.col);
+          c.restore();
         },
         upd(e,dt){
           if(e.phase==='in'){
             const d = Math.hypot(e.x-cx, e.y-cy);
-            if(d < 55){ e.vx*=0.85; e.vy*=0.85; }
-            if(d < 28){ e.vx=0; e.vy=0; e.phase='held'; e.holdT=0; }
+            if(d < 60){ e.vx*=0.82; e.vy*=0.82; }
+            if(d < 30){ e.vx=0; e.vy=0; e.phase='held'; e.holdT=0; e.alpha=0.18; }
           } else if(e.phase==='held'){
             e.holdT = (e.holdT||0)+dt;
-            e.x = cx + Math.cos(e.sa + e.holdT*0.8)*22;
-            e.y = cy + Math.sin(e.sa + e.holdT*0.8)*22;
+            e.x = cx + Math.cos(e.sa + e.holdT*0.75)*20;
+            e.y = cy + Math.sin(e.sa + e.holdT*0.75)*20;
+            e.alpha = 0.18;
+          } else {
+            e.alpha = 1;
           }
         }
       });
       crystals.push(e);
-      if(i%3===0) sfx('pop');
-      yield 0.04;
+      if(i%4===0) sfx('pop');
+      yield 0.045;
     }
-    yield Math.max(0, pat.delay > 0 ? 0.15 : 0.25);
+    yield 0.45; // pause between waves so the attack breathes
   }
 
-  yield* until(() => crystals.filter(c=>!c.dead && c.phase==='held').length >= crystals.length*0.7, 4);
-  yield 0.35;
+  // Wait until most crystals have arrived, then hold a beat
+  yield* until(() => crystals.filter(c=>!c.dead && c.phase==='held').length >= crystals.length*0.65, 6);
+  yield 1.1;
 
+  // ── RAGE RELEASE ── strong red pulse + cool effects
   G.pose = 'slash';
   sfx('boom'); sfx('buster');
-  G.shake = Math.max(G.shake, 14);
-  G.flash = 0.22; G.flashCol = '#ffffff';
-  G.novaGlow = 1.2;
+  G.shake = Math.max(G.shake, 16);
+  G.flash = 0.35; G.flashCol = '#ff2040';
+  G.novaGlow = 1.35;
+  G.atkTint = '255,20,50';
+  G.novaRage = 1;
 
+  // Crystals become fully opaque and blast outward hard
   for(const e of crystals){
     if(e.dead) continue;
     e.phase = 'out';
-    const a = Math.atan2(e.y-cy, e.x-cx) + rnd(-0.2,0.2);
-    const sp = rnd(280,420);
+    e.alpha = 1;
+    const a = Math.atan2(e.y-cy, e.x-cx) + rnd(-0.25,0.25);
+    const sp = rnd(340,520); // faster outward
     e.vx = Math.cos(a)*sp;
     e.vy = Math.sin(a)*sp;
-    e.spin = rnd(4,8)*(Math.random()<0.5?1:-1);
+    e.spin = rnd(5,10)*(Math.random()<0.5?1:-1);
   }
-  yield 0.55;
 
+  // Strong red screen pulse while they fly out
+  yield* tween(0.7, p => {
+    G.novaRage = 1 - p*0.35;
+    G.dark = 0.25 + 0.2*Math.sin(p*Math.PI*3);
+    G.flash = Math.max(G.flash, 0.12 + 0.18*Math.abs(Math.sin(p*8)));
+    G.flashCol = '#ff1838';
+  });
+
+  // Pull back toward center
   for(const e of crystals){
     if(e.dead) continue;
     e.phase = 'return';
     const a = Math.atan2(cy-e.y, cx-e.x);
-    const sp = rnd(160,240);
+    const sp = rnd(200,300);
     e.vx = Math.cos(a)*sp;
     e.vy = Math.sin(a)*sp;
   }
   sfx('charge');
-  yield 0.45;
+  yield* tween(0.55, p => {
+    G.novaRage = 0.65 + 0.35*(1-p);
+  });
 
-  // explode — trimmed shard counts (was 5-8 each) for far fewer entities on screen at once
+  // EXPLODE — shards travel much farther so they can hit the player
+  G.novaRage = 1;
+  G.flash = 0.4; G.flashCol = '#ff1028';
+  G.shake = Math.max(G.shake, 14);
   for(const e of crystals){
     if(e.dead) continue;
     e.dead = true;
-    burst(e.x, e.y, 5, e.col, 140, 0.4, 3);
-    const nSh = 3 + (e.size>24?2:0);
+    burst(e.x, e.y, 8, e.col, 220, 0.55, 3);
+    const nSh = 5 + (e.size>22?3:1); // more shards
     for(let k=0;k<nSh;k++){
       const a = rnd(0,TAU);
-      const sp = rnd(80,160);
+      // High speed so shards cross the full arena and threaten the soul
+      const sp = rnd(260,480);
       spawn({
         kind:'shard', x:e.x, y:e.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        r: 5 + e.size*0.15, life:2.0, fade:0.4, dmg:11, graze:0.5,
-        col: e.col, rot:a, spin:rnd(-4,4),
+        r: 5.5 + e.size*0.14, life:2.8, fade:0.5, dmg:11, graze:0.55,
+        col: e.col, rot:a, spin:rnd(-6,6),
         draw(c,q){
           const al = q.fade?clamp(q.life/q.fade,0,1):1;
           c.globalAlpha = al;
@@ -1766,43 +1823,50 @@ function* atkCrystalNova(){
     }
   }
   sfx('boom'); sfx('crack');
-  G.shake = Math.max(G.shake, 10);
-  G.flash = 0.2; G.flashCol = '#ffd0ff';
-  yield 0.5;
+  // Keep red pulse going for a moment after detonation
+  yield* tween(0.85, p => {
+    G.novaRage = 1 - p*0.7;
+    G.flash = Math.max(0.08, 0.28*(1-p));
+    G.flashCol = '#ff1838';
+    G.dark = 0.15 + 0.18*Math.abs(Math.sin(p*6));
+  });
+  G.atkTint = null;
+  G.novaRage = 0;
+  yield 0.25;
 
   G.pose = 'slash';
   const th = PI/4 + rnd(-0.08,0.08);
   slashLine(cx, cy, th, {w:16, tele:0.35, dur:0.3, dmg:14, graze:2, len:1500});
-  yield 0.2;
+  yield 0.22;
   slashLine(cx, cy, th+PI/2, {w:14, tele:0.28, dur:0.26, dmg:13, graze:2, len:1500});
-  yield 0.18;
+  yield 0.2;
   slashLine(cx, cy, th+0.4, {w:12, tele:0.22, dur:0.22, dmg:12, graze:1.5, len:1500});
-  yield 0.35;
+  yield 0.4;
 
   G.novaShattered = true;
   G.shatterPieces = [];
-  for(let i=0;i<12;i++){
+  for(let i=0;i<16;i++){
     G.shatterPieces.push({
       x: rnd(0,W), y: rnd(0,H),
-      vx: rnd(-180,180), vy: rnd(-60,220),
-      rot: rnd(0,TAU), spin: rnd(-4,4),
-      w: rnd(40,120), h: rnd(30,90),
-      life: 1.2, max: 1.2,
-      col: pick(['#5a1020','#3a0a30','#2a1040','#4a1830'])
+      vx: rnd(-220,220), vy: rnd(-80,260),
+      rot: rnd(0,TAU), spin: rnd(-5,5),
+      w: rnd(40,130), h: rnd(30,100),
+      life: 1.35, max: 1.35,
+      col: pick(['#5a1020','#3a0a30','#2a1040','#4a1830','#6a1528'])
     });
   }
   sfx('crack'); sfx('boom');
-  G.shake = Math.max(G.shake, 16);
-  G.flash = 0.3; G.flashCol = '#ffffff';
+  G.shake = Math.max(G.shake, 18);
+  G.flash = 0.35; G.flashCol = '#ffffff';
 
-  yield* tween(0.9, p => {
+  yield* tween(1.1, p => {
     G.novaHue = 1-p;
     G.novaGlow = 1-p;
-    G.dark = 0.35*(1-p);
+    G.dark = 0.32*(1-p);
     for(const pce of G.shatterPieces){
       pce.x += pce.vx * G.dt;
       pce.y += pce.vy * G.dt;
-      pce.vy += 280 * G.dt;
+      pce.vy += 300 * G.dt;
       pce.rot += pce.spin * G.dt;
       pce.life -= G.dt;
     }
@@ -1811,6 +1875,7 @@ function* atkCrystalNova(){
   G.novaMode = false;
   G.novaGlow = 0;
   G.novaHue = 0;
+  G.novaRage = 0;
   G.boardCol = null;
   G.boxT = Object.assign({}, BOX0);
   G.pose = 'idle';
@@ -1822,20 +1887,21 @@ function* atkCrystalNova(){
   G.novaFinale = true;
   G.msg = 'The Knight is exposed... FIGHT!';
   G.pose = 'cast';
-  for(let wave=0; wave<3; wave++){
-    for(let k=0;k<6;k++){
-      const a = k/6*TAU + wave*0.3;
+  // Extra finale shards — helps land the full sequence near ~25s
+  for(let wave=0; wave<5; wave++){
+    for(let k=0;k<8;k++){
+      const a = k/8*TAU + wave*0.25;
       spawn({
-        kind:'shard', x:G.B.x+Math.cos(a)*20, y:G.B.y+Math.sin(a)*20,
-        vx:Math.cos(a)*rnd(100,150), vy:Math.sin(a)*rnd(100,150),
-        r:5, life:2.5, fade:0.3, dmg:10, graze:0.4,
+        kind:'shard', x:G.B.x+Math.cos(a)*22, y:G.B.y+Math.sin(a)*22,
+        vx:Math.cos(a)*rnd(130,190), vy:Math.sin(a)*rnd(130,190),
+        r:5.2, life:2.7, fade:0.35, dmg:10, graze:0.4,
         col:'#c9a0ff', rot:a, draw:drawShard
       });
     }
     sfx('pop');
     yield 0.55;
   }
-  yield 0.8;
+  yield 1.1;
   G.pose = 'idle';
 }
 
@@ -1887,7 +1953,7 @@ function clearAttackDebris(){
 function attackDone(){
   clearAttackDebris();
   G.phase='post';G.pt=0;G.pose='idle';G.atkTint=null;G.split=null;G.faceBoard=null;
-  G.novaMode=false;G.novaGlow=0;G.novaHue=0;G.boardCol=null;
+  G.novaMode=false;G.novaGlow=0;G.novaHue=0;G.novaRage=0;G.boardCol=null;
   if(G.soul.hp<G.soul.maxhp){const heal=Math.max(1,Math.round(G.soul.maxhp*.06));G.soul.hp=Math.min(G.soul.maxhp,G.soul.hp+heal);sfx('heal');pop(G.soul.x,G.soul.y-16,'+'+heal,'#5ef78a',true);}
 }
 function winFight(){
