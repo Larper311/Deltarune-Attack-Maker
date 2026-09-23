@@ -176,9 +176,7 @@ function heartPath(c,x,y,s){
 }
 function star6(c,x,y,R,rot,col){
   c.save();c.translate(x,y);c.rotate(rot);
-  // skip expensive shadows when many crystals are on screen
-  const heavy = !(typeof G!=='undefined' && G && G.ents && G.ents.length>12);
-  if(heavy){c.shadowColor=col;c.shadowBlur=6;}
+  c.shadowColor=col;c.shadowBlur=7;
   c.fillStyle=col;
   const n=8;
   c.beginPath();
@@ -188,7 +186,7 @@ function star6(c,x,y,R,rot,col){
     i?c.lineTo(px,py):c.moveTo(px,py);
   }
   c.closePath();c.fill();
-  if(heavy) c.shadowBlur=0;
+  c.shadowBlur=0;
   c.strokeStyle='rgba(255,255,255,.85)';c.lineWidth=1;c.stroke();
   c.fillStyle='#fff';c.beginPath();c.arc(0,0,R*.16,0,TAU);c.fill();
   c.restore();
@@ -214,26 +212,12 @@ function newFight(cfg){
     cfg,B:BOSSES[cfg.boss],t:0,dt:0,turn:0,turnDef:null,phase:'text',pt:0,
     ents:[],shots:[],parts:[],pops:[],cos:[],soulEchoes:[],
     box:Object.assign({},MENUBOX),boxT:Object.assign({},MENUBOX),
-    soul:{x:320,y:300,r:3.2,hp:cfg.hp||100,maxhp:cfg.hp||100,inv:0,freeze:0,kx:0,ky:0,side:1,moving:false,slow:false,charge:0,grazeFlash:0,fast:false},
+    soul:{x:320,y:300,r:3.2,hp:cfg.hp||100,maxhp:cfg.hp||100,inv:0,freeze:0,kx:0,ky:0,side:1,moving:false,slow:false,charge:0,grazeFlash:0},
     tp:0,hpBoss:cfg.bossHp,maxBoss:cfg.bossHp,guard:false,shake:0,flash:0,freeze:0,
     pose:'idle',bossFlash:0,dark:0,split:null,faceBoard:null,atkTint:null,
-    flags:{phonesHard:false,face:null,neoDone:false,holdBreath:false,novaDone:false},
-    novaMode:false,novaGlow:0,novaHue:0,novaFinale:false,novaShattered:false,glitchT:0,fleeT:0,
-    menuSel:0,subSel:0,menuMode:'main', // main | act | item | text
-    text:'',ti:0,doneT:-1,lastN:0,msg:'',hurtThisAttack:false,q:0,neoHits:0,
-    lastGraze:0,ending:false,endT:0,fb:null,anim:null,tpFlash:0,
-    btnPulse:0,btnFlash:0,
-    // FIGHT timing bar
-    fightBar:null, // {t, stopped, pos, zone, result, dmg, animT}
-    slashAnims:[],
-    items:[
-      {id:'candy',name:'Dark Candy',desc:'Restores 40 HP.',uses:2,effect:'hp',val:40},
-      {id:'tea',name:'Choco Tea',desc:'Restores 60 HP.',uses:1,effect:'hp',val:60},
-      {id:'tpbar',name:'TP Bar',desc:'Fills 40 TP.',uses:2,effect:'tp',val:40},
-      {id:'tension',name:'Tension Bit',desc:'Fills 100 TP.',uses:1,effect:'tp',val:100},
-      {id:'shield',name:'Scrap Shield',desc:'Guard this turn (extra).',uses:1,effect:'guard',val:1},
-      {id:'spark',name:'Spark Cookie',desc:'Restores 25 HP + 20 TP.',uses:2,effect:'both',hp:25,tp:20}
-    ]
+    flags:{phonesHard:false,face:null,neoDone:false},
+    menuSel:0,text:'',ti:0,doneT:-1,lastN:0,msg:'',hurtThisAttack:false,q:0,neoHits:0,
+    lastGraze:0,ending:false,endT:0,fb:null,anim:null,tpFlash:0
   };
   inFight=true;
   nextTurn();
@@ -261,8 +245,7 @@ function* until(f,max){let t=0;max=max||60;while(!f()&&t<max){t+=G.dt;yield 0;}}
 function* delayed(t,f){yield t;f();}
 
 function burst(x,y,n,col,sp,life,size){
-  if(G.parts.length>180)return;
-  n = Math.min(n, G.novaMode ? 8 : 14);
+  if(G.parts.length>500)return;
   for(let i=0;i<n;i++){
     const a=rnd(0,TAU),v=rnd(.3,1)*(sp||120);
     G.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(.5,1)*(life||.5),max:life||.5,size:size||2,col:col||'#fff'});
@@ -313,8 +296,7 @@ function updateSoul(dt){
     let dx=(isDown('arrowright','d')?1:0)-(isDown('arrowleft','a')?1:0);
     let dy=(isDown('arrowdown','s')?1:0)-(isDown('arrowup','w')?1:0);
     s.slow=isDown('shift','x');
-    const base=s.fast?148:118;
-    const sp=s.slow?(base*0.5):base;
+    const sp=s.slow?58:118;
     if(dx&&dy){dx*=.7071;dy*=.7071;}
     s.x+=dx*sp*dt;s.y+=dy*sp*dt;s.moving=!!(dx||dy);
   }
@@ -398,35 +380,6 @@ function updateEnts(dt){
 function drawBg(c){
   c.fillStyle='#05030b';c.fillRect(0,0,W,H);
   const th=G.B.theme,bx=G.B.x,by=G.B.y;
-  // Crystal Nova full-screen cinematic BG (like the reference shots)
-  if(G.novaMode){
-    const hue = G.novaHue||0;
-    // deep red → violet radial
-    const g=c.createRadialGradient(W/2,H/2-20,20,W/2,H/2-20,420);
-    g.addColorStop(0, 'rgba('+(180+75*hue)+','+(20+40*hue)+','+(60+120*hue)+','+(0.55+0.25*hue)+')');
-    g.addColorStop(0.45, 'rgba('+(90+40*hue)+',10,'+(40+80*hue)+',0.85)');
-    g.addColorStop(1, 'rgba(10,0,20,1)');
-    c.fillStyle=g;c.fillRect(0,0,W,H);
-    // radial rays
-    c.save();
-    c.globalAlpha = 0.12 + 0.1*hue;
-    c.strokeStyle = '#ffb0d0';
-    c.lineWidth = 2;
-    for(let i=0;i<24;i++){
-      const a=i/24*TAU + G.t*0.08;
-      c.beginPath();
-      c.moveTo(W/2, H/2-20);
-      c.lineTo(W/2+Math.cos(a)*700, H/2-20+Math.sin(a)*700);
-      c.stroke();
-    }
-    c.restore();
-    // soft vignette
-    const vg=c.createRadialGradient(W/2,H/2,80,W/2,H/2,380);
-    vg.addColorStop(0,'rgba(0,0,0,0)');
-    vg.addColorStop(1,'rgba(0,0,0,0.55)');
-    c.fillStyle=vg;c.fillRect(0,0,W,H);
-    return;
-  }
   if(th==='knight'){
     const g=c.createRadialGradient(bx,by,10,bx,by,340);
     g.addColorStop(0,'rgba(150,140,220,.22)');g.addColorStop(1,'rgba(150,140,220,0)');
@@ -482,8 +435,6 @@ function drawBoard(c){
       c.strokeStyle='#ff2f55';c.lineWidth=5;c.beginPath();c.moveTo(ax,ay);c.lineTo(bx,by);c.stroke();
       c.restore();
     }
-  }else if(G.novaMode){
-    // full-screen arena — no visible box
   }else{
     c.fillStyle='#000';c.fillRect(b.x,b.y,b.w,b.h);
     c.strokeStyle=G.boardCol||'#fff';c.lineWidth=3;c.strokeRect(b.x,b.y,b.w,b.h);
@@ -624,42 +575,33 @@ function slashLine(x,y,ang,o){
 }
 function advanceStrike(e,dt){
   if(e.mode==='lock'){
-    // brief red warn, then slight pull-back
-    if(e.t>=.22){e.mode='pull';e.t=0;e.fromX=e.x;e.fromY=e.y;
-      // pull slightly AWAY from player (along the angle outward)
-      e.toX=e.x+Math.cos(e.ang)*28;e.toY=e.y+Math.sin(e.ang)*28;}
+    if(e.t>=.16){e.mode='pull';e.t=0;e.fromX=e.x;e.fromY=e.y;e.toX=e.x-Math.cos(e.ang)*34;e.toY=e.y-Math.sin(e.ang)*34;}
   }else if(e.mode==='pull'){
-    const f=Math.min(1,e.t/.14);
-    e.x=lerp(e.fromX,e.toX,easeOut(f));e.y=lerp(e.fromY,e.toY,easeOut(f));
-    if(f>=1){e.mode='dash';e.t=0;e.harm=true;
-      // fire inward (toward soul direction = opposite of outward ang)
-      e.vx=-Math.cos(e.ang)*e.spd;e.vy=-Math.sin(e.ang)*e.spd;
-      sfx('slash');G.shake=Math.max(G.shake,3);}
+    const f=Math.min(1,e.t/.12);
+    e.x=lerp(e.fromX,e.toX,f);e.y=lerp(e.fromY,e.toY,f);
+    if(f>=1){e.mode='dash';e.t=0;e.harm=true;e.vx=Math.cos(e.ang)*e.spd;e.vy=Math.sin(e.ang)*e.spd;sfx('slash');G.shake=Math.max(G.shake,3);}
   }else if(e.mode==='dash'){
     e.x+=e.vx*dt;e.y+=e.vy*dt;
-    if(e.x<-80||e.x>W+80||e.y<-80||e.y>H+80)e.dead=true;
+    if(e.x<-60||e.x>W+60||e.y<-60||e.y>H+60)e.dead=true;
   }
 }
 function strikeSd(e,px,py){
   if(e.mode!=='dash')return 999;
-  // blade points inward (opposite of outward ang)
-  const ca=-Math.cos(e.ang),sa=-Math.sin(e.ang);
-  return sdSeg(px,py,e.x-ca*20,e.y-sa*20,e.x+ca*34,e.y+sa*34)-4;
+  return sdSeg(px,py,e.x-Math.cos(e.ang)*34,e.y-Math.sin(e.ang)*34,e.x+Math.cos(e.ang)*20,e.y+Math.sin(e.ang)*20)-4;
 }
 function strikeDraw(c,e){
   const dashing=e.mode==='dash';
   drawSword(c,e.x,e.y,e.ang+PI,58,8,dashing?'#ffffff':(e.red?'#ff2f55':'#e7ecff'),dashing?'#fff':(e.red?'#ff2f55':null));
 }
 function spawnTSword(ang,trackDur,dmg,spd){
-  // spawn far away and stay far — only follow position, never drift closer
-  const startDist=rnd(175,210);
+  const startDist=rnd(130,165);
   return spawn({kind:'tsword',x:G.soul.x+Math.cos(ang)*startDist,y:G.soul.y+Math.sin(ang)*startDist,ang,mode:'track',
-    trackDur,dmg,spd,startDist,harm:false,life:trackDur+3.2,cull:false,red:0,graze:.4,
+    trackDur,dmg,spd,startDist,harm:false,life:trackDur+2.5,cull:false,red:0,graze:.4,
     sd:strikeSd,
     upd(e,dt){
       if(e.mode==='track'){
-        // pure position follow at fixed far distance
-        const dist=e.startDist;
+        const frac=Math.min(1,e.t/e.trackDur);
+        const dist=lerp(e.startDist,66,easeOut(frac));
         e.x=G.soul.x+Math.cos(e.ang)*dist;e.y=G.soul.y+Math.sin(e.ang)*dist;
         if(e.t>=e.trackDur){e.mode='lock';e.t=0;e.red=1;sfx('warn');}
         return;
@@ -791,7 +733,7 @@ function* atkSplitter(v){
 function* atkTunnel(v){
   G.pose='slash';
   const b=G.box,cx=b.x+b.w/2,cy=b.y+b.h/2;
-  const gapH=v===3?18:26,spd=v===3?420:360,dur=v===2?6.8:6.0,step=.095;
+  const gapH=v===3?21:29,spd=v===3?275:248,dur=v===2?7.4:6.6,step=.115;
   const lim=b.h/2-gapH-8;
   let g=rnd(-lim,lim)*.5,gv=0,phi=0,t=0;
   while(t<dur){
@@ -858,7 +800,7 @@ function* atkTunnel(v){
       }});
     co((function*(){
       yield .95+i*.07;
-      e.on=true;e.vx=Math.cos(e.ang)*720;e.vy=Math.sin(e.ang)*720;sfx('slash');
+      e.on=true;e.vx=Math.cos(e.ang)*560;e.vy=Math.sin(e.ang)*560;sfx('slash');
     })());
   }
   yield 1.2;
@@ -918,69 +860,40 @@ function drawKnight(c,x0,y0,t,o){
   o=o||{};
   const fl=o.flash>0,pose=o.pose||'idle';
   const s=o.scale||(typeof G!=='undefined'&&G&&G.B&&G.B.scale)||1;
-  // extra idle bob + stance lean
-  const bob=Math.sin(t*2.4)*4+(pose==='idle'?Math.sin(t*1.1)*2:0);
-  const leanX=pose==='slash'?Math.sin(t*8)*6:pose==='cast'?-4:pose==='cast2'?6:pose==='guard'?-3:0;
-  const baseX=x0+leanX,baseY=y0+bob;
+  const baseX=x0,baseY=y0+Math.sin(t*2.2)*3;
   c.save();c.translate(baseX,baseY);c.scale(s,s);
-  const x=0,y=0,sway=Math.sin(t*1.8)*5+(pose==='slash'?Math.sin(t*7)*4:0);
-  const g=c.createRadialGradient(x,y+10,10,x,y+10,140);
-  g.addColorStop(0,'rgba(160,150,255,.38)');g.addColorStop(1,'rgba(160,150,255,0)');
-  c.fillStyle=g;c.fillRect(x-150,y-130,300,280);
-  // cape — wide V wings, more dramatic sway
+  const x=0,y=0,sway=Math.sin(t*1.6)*3;
+  const g=c.createRadialGradient(x,y+10,10,x,y+10,130);
+  g.addColorStop(0,'rgba(160,150,255,.34)');g.addColorStop(1,'rgba(160,150,255,0)');
+  c.fillStyle=g;c.fillRect(x-140,y-120,280,260);
+  // cape — wide V wings, like a torn banner
   c.fillStyle=fl?'#fff':'#0a0720';
   c.beginPath();c.moveTo(x-22,y-14);c.lineTo(x,y+2);c.lineTo(x+22,y-14);
-  c.lineTo(x+40+sway,y-56);c.lineTo(x+72+sway*1.2,y+8);c.lineTo(x+54+sway,y+32);
-  c.lineTo(x+76+sway,y+88);
-  for(let i=0;i<=5;i++){const px2=x+76+sway-i*(152/5),py2=y+88+(i%2?16:0)+Math.sin(t*3.2+i)*4;c.lineTo(px2,py2);}
-  c.lineTo(x-76-sway,y+32);c.lineTo(x-54-sway,y+8);c.lineTo(x-72-sway*1.2,y-56);c.lineTo(x-22,y-14);
+  c.lineTo(x+38+sway,y-52);c.lineTo(x+66+sway,y+10);c.lineTo(x+50+sway,y+30);
+  c.lineTo(x+70+sway,y+82);
+  for(let i=0;i<=5;i++){const px2=x+70+sway-i*(140/5),py2=y+82+(i%2?14:0)+Math.sin(t*3+i)*3;c.lineTo(px2,py2);}
+  c.lineTo(x-70-sway,y+30);c.lineTo(x-50-sway,y+10);c.lineTo(x-66-sway,y-52);c.lineTo(x-22,y-14);
   c.closePath();c.fill();
   c.strokeStyle=fl?'#fff':'#5b3fc4';c.lineWidth=2;c.stroke();
-  // sword arm + blade — pose-specific angles
+  // sword arm + blade
   let sa=-1.15;
-  if(pose==='slash')sa=-1.15+Math.sin(t*10)*1.15;
-  else if(pose==='cast')sa=-0.7;
-  else if(pose==='cast2')sa=-1.55;
-  else if(pose==='guard')sa=-0.35;
-  else if(pose==='spread')sa=-0.5;
-  else if(pose==='idle')sa=-1.15+Math.sin(t*1.4)*0.12;
-  const hx=x+38+(pose==='slash'?Math.sin(t*9)*8:0),hy=y+30;
-  const swordGlow=pose==='slash'?'#8b5cff':(pose==='cast'||pose==='cast2')?'#c9a0ff':null;
-  drawSword(c,hx+Math.cos(sa)*74,hy+Math.sin(sa)*74,sa,160,12,fl?'#fff':'#c9d0ff',swordGlow);
+  if(pose==='slash')sa=-1.15+Math.sin(t*9)*.9;
+  const hx=x+38,hy=y+30;
+  drawSword(c,hx+Math.cos(sa)*74,hy+Math.sin(sa)*74,sa,160,12,fl?'#fff':'#c9d0ff',pose==='slash'?'#8b5cff':null);
   c.strokeStyle=fl?'#fff':'#3b2d7a';c.lineWidth=7;c.lineCap='round';
   c.beginPath();c.moveTo(x+20,y+4);c.lineTo(hx,hy);c.stroke();
-  // casting arm
-  let px,py;
-  if(pose==='cast'&&typeof G!=='undefined'&&G&&G.B){px=(G.B.palm.x-baseX)/s;py=(G.B.palm.y-baseY)/s;}
-  else if(pose==='cast2'){px=x-56;py=y-10;}
-  else if(pose==='guard'){px=x-28;py=y+20;}
-  else if(pose==='slash'){px=x-30;py=y+50;}
-  else if(pose==='spread'){px=x-70;py=y+8;}
-  else{px=x-46;py=y+44;}
+  // casting arm (palm target given in world space — bring into this local frame)
+  const px=pose==='cast'?(G.B.palm.x-baseX)/s:pose==='cast2'?x-52:x-46;
+  const py=pose==='cast'?(G.B.palm.y-baseY)/s:pose==='cast2'?y-6:y+44;
   c.beginPath();c.moveTo(x-20,y+4);c.lineTo(px,py);c.stroke();c.lineCap='butt';
-  // spread pose: both arms wide
-  if(pose==='spread'){
-    c.lineCap='round';
-    c.beginPath();c.moveTo(x+20,y+4);c.lineTo(x+70,y+8);c.stroke();
-    c.lineCap='butt';
-    // energy orbs in palms
-    for(const side of [-1,1]){
-      const ox=x+side*70, oy=y+8;
-      const r=8+Math.sin(t*12)*3;
-      const gg=c.createRadialGradient(ox,oy,1,ox,oy,r+10);
-      gg.addColorStop(0,'rgba(255,255,255,.95)');gg.addColorStop(0.5,'rgba(220,170,255,.6)');gg.addColorStop(1,'rgba(150,80,255,0)');
-      c.fillStyle=gg;c.beginPath();c.arc(ox,oy,r+10,0,TAU);c.fill();
-    }
-  }
   if(pose==='cast'||pose==='cast2'){
     const r=10+Math.sin(t*14)*3;
-    const gg=c.createRadialGradient(px,py,1,px,py,r+10);gg.addColorStop(0,'rgba(220,170,255,.95)');gg.addColorStop(1,'rgba(150,80,255,0)');
-    c.fillStyle=gg;c.beginPath();c.arc(px,py,r+10,0,TAU);c.fill();
+    const gg=c.createRadialGradient(px,py,1,px,py,r+8);gg.addColorStop(0,'rgba(220,170,255,.95)');gg.addColorStop(1,'rgba(150,80,255,0)');
+    c.fillStyle=gg;c.beginPath();c.arc(px,py,r+8,0,TAU);c.fill();
   }
-  // torso — slight squash on slash
-  const torsoY=pose==='slash'?2:0;
+  // torso
   c.fillStyle=fl?'#fff':'#15103a';
-  c.beginPath();c.moveTo(x-24,y-10+torsoY);c.lineTo(x+24,y-10+torsoY);c.lineTo(x+16,y+46);c.lineTo(x-16,y+46);c.closePath();c.fill();
+  c.beginPath();c.moveTo(x-24,y-10);c.lineTo(x+24,y-10);c.lineTo(x+16,y+46);c.lineTo(x-16,y+46);c.closePath();c.fill();
   c.strokeStyle=fl?'#fff':'#7a5cff';c.lineWidth=2;c.stroke();
   // helm
   c.fillStyle=fl?'#fff':'#0e0a28';
@@ -994,9 +907,8 @@ function drawKnight(c,x0,y0,t,o){
     c.quadraticCurveTo(x+hs*22,y-64,x+hs*11,y-56);c.closePath();c.fill();
     c.strokeStyle=fl?'#fff':'#6a4fd8';c.lineWidth=1.4;c.stroke();
   }
-  // eyes — pulse when casting
-  const eyeGlow=pose==='cast'||pose==='cast2'||pose==='slash'?18:12;
-  c.fillStyle='#ff2a4d';c.shadowColor='#ff2a4d';c.shadowBlur=eyeGlow;
+  // eyes
+  c.fillStyle='#ff2a4d';c.shadowColor='#ff2a4d';c.shadowBlur=12;
   c.fillRect(x-13,y-26,10,3);c.fillRect(x+3,y-26,10,3);
   c.shadowBlur=0;
   c.restore();
@@ -1459,10 +1371,6 @@ const BOSSES={
     ],
     loopFrom:10,
     run(a){
-      // Crystal Nova once when HP drops to 75% or below
-      if(!G.flags.novaDone && G.hpBoss <= G.maxBoss * 0.75){
-        return atkCrystalNova();
-      }
       if(a.a==='stars')return atkStars(a.v);
       if(a.a==='tracking')return atkTracking(a.v);
       if(a.a==='splitter')return atkSplitter(a.v);
@@ -1502,518 +1410,35 @@ const BOSSES={
 };
 
 /* ---------- turn flow ---------- */
-/* ---------- FIGHT timing bar + slash anim ---------- */
-function startFightBar(){
-  // zone centered-ish with slight randomness so it's not always identical
-  const zone = 0.38 + rnd(-0.04, 0.06);
-  G.fightBar = {
-    t:0, stopped:false, pos:1.08, // starts off the right
-    zone, zoneW:0.07,
-    result:null, dmg:0, label:'',
-    animT:0, done:false, pressLock:false
-  };
-  G.phase = 'fightBar';
-  G.pose = 'idle';
-  sfx('sel');
-}
-function scoreFightBar(pos, zone, zoneW){
-  const dist = Math.abs(pos - zone);
-  if(dist <= zoneW * 0.28) return {tier:'perfect', dmg:76, label:'PERFECT!'};
-  if(dist <= zoneW * 0.7)  return {tier:'great',   dmg:rint(52,60), label:'GREAT'};
-  if(dist <= zoneW * 1.35) return {tier:'ok',      dmg:rint(26,34), label:'OK'};
-  return {tier:'miss', dmg:0, label:'MISS'};
-}
-function resolveFightBar(){
-  const fb = G.fightBar;
-  if(!fb || fb.stopped) return;
-  fb.stopped = true;
-  fb.pos = clamp(fb.pos, 0, 1);
-  const sc = scoreFightBar(fb.pos, fb.zone, fb.zoneW);
-  fb.result = sc.tier;
-  fb.dmg = sc.dmg;
-  fb.label = sc.label;
-  fb.animT = 0;
-  if(sc.dmg > 0){
-    sfx('slash');
-    // spawn slash animation toward knight
-    const fl = bossFloat(G.t, false);
-    const tx = G.B.x + fl.ox, ty = G.B.y + fl.oy + 20;
-    G.slashAnims.push({
-      x: 320, y: 360, tx, ty, t:0, life:0.45,
-      hit:false, dmg:sc.dmg, big:sc.tier==='perfect'
-    });
-  } else {
-    sfx('no');
-  }
-}
-function updateFightBar(dt){
-  const fb = G.fightBar;
-  if(!fb) return;
-  fb.t += dt;
-  if(!fb.stopped){
-    // marker sweeps right → left (Undertale style: comes from right)
-    // speed eases slightly
-    const spd = 1.15 + Math.min(0.35, fb.t * 0.08);
-    fb.pos -= spd * dt;
-    if(fb.pos < -0.05){
-      // ran off without pressing
-      fb.pos = -0.05;
-      resolveFightBar();
-    }
-    if(isTap('z','enter',' ')) resolveFightBar();
-  } else {
-    fb.animT += dt;
-    // wait for slash anim + brief result display
-    const wait = fb.dmg > 0 ? 0.7 : 0.55;
-    if(fb.animT >= wait && !fb.done){
-      fb.done = true;
-      if(fb.dmg > 0){
-        if(!fb.applied){
-          if(G.novaFinale){
-            // final blow — freeze, glitch, flee
-            dmgBoss(fb.dmg, {x:G.B.x, y:G.B.y+20});
-            fb.applied = true;
-            G.fightBar = null;
-            triggerNovaVictory();
-            return;
-          }
-          dmgBoss(fb.dmg, {x:G.B.x, y:G.B.y+20});
-          G.shake = Math.max(G.shake, fb.result==='perfect'?10:6);
-          G.bossFlash = 0.18;
-          G.pose = 'slash';
-          fb.applied = true;
-        }
-      } else {
-        pop(320, 250, 'MISS', '#9a8fc9', true);
-      }
-      startAttack();
-      G.fightBar = null;
-    }
-  }
-}
-function updateSlashAnims(dt){
-  for(const s of G.slashAnims){
-    s.t += dt;
-    const p = Math.min(1, s.t / 0.28);
-    const e = easeOut(p);
-    s.x = lerp(320, s.tx, e);
-    s.y = lerp(360, s.ty, e);
-    if(!s.hit && p >= 1){
-      s.hit = true;
-      if(G.fightBar && !G.fightBar.applied){
-        if(G.novaFinale){
-          dmgBoss(s.dmg, {x:s.tx, y:s.ty});
-          G.fightBar.applied = true;
-          burst(s.tx, s.ty, 12, '#ffe14a', 160, 0.5, 3);
-          // victory triggered in fightBar resolve
-        } else {
-          dmgBoss(s.dmg, {x:s.tx, y:s.ty});
-          G.fightBar.applied = true;
-          G.shake = Math.max(G.shake, s.big?12:7);
-          G.bossFlash = 0.2;
-          G.pose = 'slash';
-          burst(s.tx, s.ty, s.big?18:10, '#ffe14a', 160, 0.5, 3);
-          if(s.big){ G.flash = 0.12; G.flashCol = '#ffe14a'; }
-        }
-      }
-    }
-  }
-  G.slashAnims = G.slashAnims.filter(s => s.t < s.life);
-}
-function drawFightBar(c){
-  const fb = G.fightBar;
-  if(!fb || G.phase !== 'fightBar') return;
-  const bx = 80, by = 340, bw = 480, bh = 28;
-  // plate
-  c.fillStyle = 'rgba(0,0,0,0.75)';
-  c.fillRect(bx-4, by-8, bw+8, bh+36);
-  c.strokeStyle = '#5b3fc4'; c.lineWidth = 2;
-  c.strokeRect(bx-4, by-8, bw+8, bh+36);
-  // track
-  c.fillStyle = '#1a1030';
-  c.fillRect(bx, by, bw, bh);
-  c.strokeStyle = '#fff'; c.lineWidth = 2;
-  c.strokeRect(bx, by, bw, bh);
-  // glowing zone
-  const zx = bx + fb.zone * bw;
-  const zw = fb.zoneW * bw;
-  const pulse = 0.55 + 0.45 * Math.abs(Math.sin(G.t * 6));
-  c.fillStyle = 'rgba(255,225,74,' + (0.25 * pulse) + ')';
-  c.fillRect(zx - zw/2, by+2, zw, bh-4);
-  c.strokeStyle = 'rgba(255,225,74,' + pulse + ')';
-  c.lineWidth = 2;
-  c.strokeRect(zx - zw/2, by+2, zw, bh-4);
-  // center line of zone
-  c.strokeStyle = '#ffe14a'; c.lineWidth = 2;
-  c.beginPath(); c.moveTo(zx, by+2); c.lineTo(zx, by+bh-2); c.stroke();
-  // marker
-  const mx = bx + clamp(fb.pos, 0, 1) * bw;
-  c.fillStyle = fb.stopped ? (fb.dmg>0 ? '#fff' : '#ff6a7d') : '#ff2a4d';
-  c.fillRect(mx-3, by-4, 6, bh+8);
-  c.strokeStyle = '#fff'; c.lineWidth = 1;
-  c.strokeRect(mx-3, by-4, 6, bh+8);
-  // label
-  if(fb.stopped){
-    const col = fb.result==='perfect' ? '#ffe14a' : fb.result==='miss' ? '#ff6a7d' : '#fff';
-    text(c, fb.label, W/2, by-18, fb.result==='perfect'?14:11, col, 'center');
-    if(fb.dmg>0) text(c, String(fb.dmg), W/2, by+bh+22, 12, '#ffe14a', 'center');
-  } else {
-    text(c, 'Z / ENTER — stop the bar!', W/2, by+bh+20, 8, '#9a8fc9', 'center');
-  }
-}
-function drawSlashAnims(c){
-  for(const s of G.slashAnims){
-    const a = 1 - s.t / s.life;
-    c.save();
-    c.globalAlpha = Math.max(0, a);
-    const ang = Math.atan2(s.ty - 360, s.tx - 320);
-    // trail
-    c.strokeStyle = s.big ? '#ffe14a' : '#c9d0ff';
-    c.lineWidth = s.big ? 5 : 3;
-    c.shadowColor = s.big ? '#ffe14a' : '#8b5cff';
-    c.shadowBlur = 12;
-    c.beginPath();
-    c.moveTo(s.x - Math.cos(ang)*40, s.y - Math.sin(ang)*40);
-    c.lineTo(s.x + Math.cos(ang)*20, s.y + Math.sin(ang)*20);
-    c.stroke();
-    // blade tip
-    drawSword(c, s.x, s.y, ang, s.big?70:52, s.big?10:7, s.big?'#fff':'#e7ecff', s.big?'#ffe14a':'#8b5cff');
-    c.restore();
-  }
-}
-
-/* ---------- Crystal Nova ---------- */
-function* atkCrystalNova(){
-  G.pose = 'spread'; // arms wide
-  G.flags.novaDone = true;
-  G.novaMode = true;
-  G.novaFinale = false;
-  G.novaShattered = false;
-  G.atkTint = null;
-  G.msg = 'The Knight gathers an unfathomable light...';
-  G.boxT = {x: 8, y: 8, w: W-16, h: H-16};
-  G.boardCol = 'rgba(255,255,255,0)';
-  G.novaGlow = 0;
-  G.novaHue = 0;
-
-  // ===== CHARGE: white glow, arms spread =====
-  yield* tween(1.2, p => {
-    G.novaGlow = p;
-    G.dark = 0.12 * p;
-    G.novaHue = p * 0.35;
-  });
-  sfx('charge');
-  yield* tween(0.5, p => {
-    G.novaGlow = 1;
-    G.novaHue = 0.35 + 0.65 * p;
-    G.dark = 0.12 + 0.2 * p;
-  });
-  sfx('big');
-  G.shake = Math.max(G.shake, 6);
-  G.flash = 0.15; G.flashCol = '#ffffff';
-
-  const cx = W/2, cy = H/2 - 40;
-  const crystals = [];
-
-  // ===== PHASE 1: big crystals fly IN from all directions =====
-  // staggered waves with unique patterns
-  const patterns = [
-    // wave 1: cardinal + diagonals, huge
-    { n:8,  R:[300,380], delay:0.00, size:[18,28], sp:[70,100], spin:1.2 },
-    // wave 2: dense ring, medium-large
-    { n:12, R:[260,340], delay:0.55, size:[14,22], sp:[85,120], spin:1.8 },
-    // wave 3: random scatter, mixed big
-    { n:10, R:[280,400], delay:1.15, size:[16,30], sp:[60,110], spin:2.2 },
-    // wave 4: tight final burst of giants
-    { n:6,  R:[320,420], delay:1.75, size:[22,34], sp:[90,130], spin:1.0 },
-  ];
-
-  for(const pat of patterns){
-    for(let i=0;i<pat.n;i++){
-      const a = (i/pat.n)*TAU + rnd(-0.15,0.15) + pat.delay;
-      const R = rnd(pat.R[0], pat.R[1]);
-      const ox = cx + Math.cos(a)*R, oy = cy + Math.sin(a)*R;
-      const sz = rnd(pat.size[0], pat.size[1]);
-      const sp = rnd(pat.sp[0], pat.sp[1]);
-      const ang = Math.atan2(cy-oy, cx-ox);
-      const e = spawn({
-        kind:'star', x:ox, y:oy, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
-        r: sz*0.45, life:12, dmg:11, graze:0.8, harm:true,
-        rot:rnd(0,TAU), spin:pat.spin*(i%2?1:-1),
-        col:pick(['#ff6ad5','#c9a0ff','#ffe14a','#fff','#ff2f55','#e0c0ff']),
-        size:sz, targetSize:sz, sa:ang, phase:'in',
-        // no heavy shadow every frame — cheaper draw
-        draw(c,e){
-          star6(c, e.x, e.y, e.size, e.rot, e.col);
-        },
-        upd(e,dt){
-          if(e.phase==='in'){
-            // slow as they near the knight
-            const d = Math.hypot(e.x-cx, e.y-cy);
-            if(d < 55){ e.vx*=0.85; e.vy*=0.85; }
-            if(d < 28){ e.vx=0; e.vy=0; e.phase='held'; e.holdT=0; }
-          } else if(e.phase==='held'){
-            e.holdT = (e.holdT||0)+dt;
-            // orbit slightly while waiting
-            e.x = cx + Math.cos(e.sa + e.holdT*0.8)*22;
-            e.y = cy + Math.sin(e.sa + e.holdT*0.8)*22;
-          } else if(e.phase==='out'){
-            // flying outward
-          } else if(e.phase==='return'){
-            // coming back partway
-          }
-        }
-      });
-      crystals.push(e);
-      if(i%3===0) sfx('pop');
-      yield 0.04;
-    }
-    yield Math.max(0, pat.delay > 0 ? 0.15 : 0.25);
-  }
-
-  // wait until most crystals have arrived
-  yield* until(() => crystals.filter(c=>!c.dead && c.phase==='held').length >= crystals.length*0.7, 4);
-  yield 0.35;
-
-  // ===== PHASE 2: Knight fires ALL crystals violently outward =====
-  G.pose = 'slash';
-  sfx('boom'); sfx('buster');
-  G.shake = Math.max(G.shake, 14);
-  G.flash = 0.22; G.flashCol = '#ffffff';
-  G.novaGlow = 1.2;
-
-  for(const e of crystals){
-    if(e.dead) continue;
-    e.phase = 'out';
-    const a = Math.atan2(e.y-cy, e.x-cx) + rnd(-0.2,0.2);
-    const sp = rnd(280,420);
-    e.vx = Math.cos(a)*sp;
-    e.vy = Math.sin(a)*sp;
-    e.spin = rnd(4,8)*(Math.random()<0.5?1:-1);
-  }
-  yield 0.55;
-
-  // ===== PHASE 3: crystals reverse, come PARTWAY back, then explode =====
-  for(const e of crystals){
-    if(e.dead) continue;
-    e.phase = 'return';
-    // reverse toward knight but will stop short
-    const a = Math.atan2(cy-e.y, cx-e.x);
-    const sp = rnd(160,240);
-    e.vx = Math.cos(a)*sp;
-    e.vy = Math.sin(a)*sp;
-  }
-  sfx('charge');
-  yield 0.45;
-
-  // explode before they fully return
-  for(const e of crystals){
-    if(e.dead) continue;
-    e.dead = true;
-    burst(e.x, e.y, 6, e.col, 140, 0.4, 3);
-    // big shards
-    const nSh = 5 + (e.size>22?3:0);
-    for(let k=0;k<nSh;k++){
-      const a = rnd(0,TAU);
-      const sp = rnd(80,160);
-      spawn({
-        kind:'shard', x:e.x, y:e.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        r: 5 + e.size*0.15, life:2.2, fade:0.4, dmg:11, graze:0.5,
-        col: e.col, rot:a, spin:rnd(-4,4),
-        draw(c,q){
-          const al = q.fade?clamp(q.life/q.fade,0,1):1;
-          c.globalAlpha = al;
-          c.save(); c.translate(q.x,q.y); c.rotate(q.rot||0);
-          c.fillStyle = q.col;
-          const s = 8 + (q.r||5);
-          c.beginPath();
-          c.moveTo(s,0); c.lineTo(0,s*0.5); c.lineTo(-s*0.75,0); c.lineTo(0,-s*0.5);
-          c.closePath(); c.fill();
-          c.fillStyle='#fff';
-          c.beginPath(); c.moveTo(s*0.4,0); c.lineTo(0,s*0.2); c.lineTo(-s*0.3,0); c.lineTo(0,-s*0.2);
-          c.closePath(); c.fill();
-          c.restore(); c.globalAlpha=1;
-        }
-      });
-    }
-  }
-  sfx('boom'); sfx('crack');
-  G.shake = Math.max(G.shake, 10);
-  G.flash = 0.2; G.flashCol = '#ffd0ff';
-  yield 0.5;
-
-  // ===== PHASE 4: screen-slashes that SHATTER the nova overlay =====
-  G.pose = 'slash';
-  const th = PI/4 + rnd(-0.08,0.08);
-  slashLine(cx, cy, th, {w:16, tele:0.35, dur:0.3, dmg:14, graze:2, len:1500});
-  yield 0.2;
-  slashLine(cx, cy, th+PI/2, {w:14, tele:0.28, dur:0.26, dmg:13, graze:2, len:1500});
-  yield 0.18;
-  slashLine(cx, cy, th+0.4, {w:12, tele:0.22, dur:0.22, dmg:12, graze:1.5, len:1500});
-  yield 0.35;
-
-  // shatter: nova screen falls apart
-  G.novaShattered = true;
-  G.shatterPieces = [];
-  for(let i=0;i<14;i++){
-    G.shatterPieces.push({
-      x: rnd(0,W), y: rnd(0,H),
-      vx: rnd(-180,180), vy: rnd(-60,220),
-      rot: rnd(0,TAU), spin: rnd(-4,4),
-      w: rnd(40,120), h: rnd(30,90),
-      life: 1.2, max: 1.2,
-      col: pick(['#5a1020','#3a0a30','#2a1040','#4a1830'])
-    });
-  }
-  sfx('crack'); sfx('boom');
-  G.shake = Math.max(G.shake, 16);
-  G.flash = 0.3; G.flashCol = '#ffffff';
-
-  yield* tween(0.9, p => {
-    G.novaHue = 1-p;
-    G.novaGlow = 1-p;
-    G.dark = 0.35*(1-p);
-    for(const pce of G.shatterPieces){
-      pce.x += pce.vx * G.dt;
-      pce.y += pce.vy * G.dt;
-      pce.vy += 280 * G.dt;
-      pce.rot += pce.spin * G.dt;
-      pce.life -= G.dt;
-    }
-  });
-  G.shatterPieces = [];
-  G.novaMode = false;
-  G.novaGlow = 0;
-  G.novaHue = 0;
-  G.boardCol = null;
-  G.boxT = Object.assign({}, BOX0);
-  G.pose = 'idle';
-
-  // clear remaining nova projectiles
-  for(const e of G.ents){
-    if(e.kind==='star'||e.kind==='shard'||e.kind==='slash'){ e.dead=true; e.harm=false; }
-  }
-
-  // ===== PHASE 5: finale — knight keeps attacking until you land a hit =====
-  G.novaFinale = true;
-  G.msg = 'The Knight is exposed... FIGHT!';
-  // brief extra pressure attacks on normal board
-  G.pose = 'cast';
-  for(let wave=0; wave<3; wave++){
-    for(let k=0;k<6;k++){
-      const a = k/6*TAU + wave*0.3;
-      spawn({
-        kind:'shard', x:G.B.x+Math.cos(a)*20, y:G.B.y+Math.sin(a)*20,
-        vx:Math.cos(a)*rnd(100,150), vy:Math.sin(a)*rnd(100,150),
-        r:5, life:2.5, fade:0.3, dmg:10, graze:0.4,
-        col:'#c9a0ff', rot:a, draw:drawShard
-      });
-    }
-    sfx('pop');
-    yield 0.55;
-  }
-  // keep a light pressure until player FIGhTs — attack generator ends,
-  // but novaFinale stays true so the next successful FIGHT triggers the win sequence
-  yield 0.8;
-  G.pose = 'idle';
-}
-
-function triggerNovaVictory(){
-  // called when player lands a FIGHT hit during novaFinale
-  G.novaFinale = false;
-  G.phase = 'glitchFlee';
-  G.glitchT = 0;
-  G.fleeT = 0;
-  G.pose = 'idle';
-  G.bossFlash = 0.5;
-  clearAttackDebris();
-  sfx('crack');
-  G.shake = 10;
-}
-
 function nextTurn(){
   G.turn++;
   const seq=G.B.seq;
   const idx=G.turn<=seq.length?G.turn-1:G.B.loopFrom+((G.turn-1-G.B.loopFrom)%(seq.length-G.B.loopFrom));
   G.turnDef=seq[idx];
-  G.phase='menu';G.pt=0;G.menuSel=0;G.subSel=0;G.menuMode='main';G.tp=Math.min(100,G.tp);
+  G.phase='menu';G.pt=0;G.menuSel=0;G.tp=Math.min(100,G.tp);
   G.guard=false;G.box=Object.assign({},MENUBOX);G.boxT=Object.assign({},MENUBOX);
-  G.msg=G.turnDef.txt||'';
-  G.btnPulse=0;G.btnFlash=0;
 }
 function startAttack(){
-  clearAttackDebris();
   G.phase='toAttack';G.pt=0;G.hurtThisAttack=false;
   G.boxT=Object.assign({},BOX0);
   G.soul.x=clamp(G.soul.x,BOX0.x+10,BOX0.x+BOX0.w-10);
   G.soul.y=BOX0.y+BOX0.h-24;
   G.msg=G.turnDef.txt;G.ti=0;G.tchar=0;
-  G.pose='idle';
-}
-function clearAttackDebris(){
-  // force-despawn lingering projectiles / swords / shards so nothing sticks on screen
-  for(const e of G.ents){
-    if(e.kind==='slash'||e.kind==='tsword'||e.kind==='fsword'||e.kind==='tblade'||e.kind==='rot'||
-       e.kind==='shard'||e.kind==='rshard'||e.kind==='dia'||e.kind==='star'||e.kind==='b'||
-       e.kind==='bomb'||e.kind==='pipis'||e.kind==='tinyhead'||e.kind==='truck'||e.kind==='shead'||
-       e.kind==='phone'||e.kind==='bighead'||e.kind==='heart'||e.kind==='sheart'||e.kind==='fpart'||
-       e.kind==='neoface'||e.kind==='bigface'||e.kind==='bar'){
-      e.dead=true;e.harm=false;e.on=false;
-    }
-  }
-  G.ents=G.ents.filter(e=>!e.dead);
-  G.shots=[];
-  G.cos=[]; // stop any leftover generators
 }
 function attackDone(){
-  clearAttackDebris();
-  G.phase='post';G.pt=0;G.pose='idle';G.atkTint=null;G.split=null;G.faceBoard=null;
-  G.novaMode=false;G.novaGlow=0;G.novaHue=0;G.boardCol=null;
+  G.phase='post';G.pt=0;
   if(G.soul.hp<G.soul.maxhp){const heal=Math.max(1,Math.round(G.soul.maxhp*.06));G.soul.hp=Math.min(G.soul.maxhp,G.soul.hp+heal);sfx('heal');pop(G.soul.x,G.soul.y-16,'+'+heal,'#5ef78a',true);}
 }
 function winFight(){
   G.phase='victory';G.pt=0;sfx('win');G.ending=true;burst(G.B.x,G.B.y,40,'#ffe14a',180,1.2,3);
   store('best_'+G.cfg.boss,Math.max(G.turn,+(store('best_'+G.cfg.boss))||0));
 }
-function useItem(idx){
-  const it=G.items[idx];
-  if(!it||it.uses<=0){sfx('no');return false;}
+function useItem(){
   const s=G.soul;
-  if(it.effect==='hp'){
-    if(s.hp>=s.maxhp){sfx('no');pop(s.x,s.y-16,'Full HP!','#9a8fc9');return false;}
-    const heal=it.val;s.hp=Math.min(s.maxhp,s.hp+heal);sfx('heal');pop(s.x,s.y-16,'+'+heal,'#5ef78a',true);
-  }else if(it.effect==='tp'){
-    addTP(it.val);sfx('sel');pop(s.x,s.y-16,'+'+it.val+' TP','#8fe3ff',true);
-  }else if(it.effect==='guard'){
-    G.guard=true;sfx('sel');pop(s.x,s.y-16,'Guarding!','#8fe3ff',true);
-  }else if(it.effect==='both'){
-    const heal=it.hp||0;s.hp=Math.min(s.maxhp,s.hp+heal);
-    if(heal)pop(s.x,s.y-16,'+'+heal,'#5ef78a',true);
-    if(it.tp){addTP(it.tp);pop(s.x,s.y-28,'+'+it.tp+' TP','#8fe3ff',true);}
-    sfx('heal');
-  }
-  it.uses--;
-  return true;
-}
-function doAct(idx){
-  // 0 = Check, 1 = Hold Breath
-  if(idx===0){
-    G.msg='* The Roaring Knight — ATK ??? DEF ???\n* HP: ???\n* Its power cannot be measured.';
-    sfx('sel');
-    return 'text';
-  }
-  if(idx===1){
-    if(G.flags.holdBreath){
-      G.msg='* You already held your breath.\n* (Speed boost cannot stack.)';
-      sfx('no');
-      return 'text';
-    }
-    G.flags.holdBreath=true;G.soul.fast=true;
-    G.msg='* You hold your breath.\n* Your SOUL feels lighter... MOVEMENT UP!';
-    sfx('heal');pop(G.soul.x,G.soul.y-16,'SPD UP','#8fe3ff',true);
-    return 'text';
-  }
-  return null;
+  if(s.hp>=s.maxhp){sfx('no');pop(s.x,s.y-16,'Full HP!','#9fb','#9fb');return;}
+  const heal=Math.round(s.maxhp*.4);
+  s.hp=Math.min(s.maxhp,s.hp+heal);sfx('heal');pop(s.x,s.y-16,'+'+heal,'#5ef78a',true);
+  G.items=Math.max(0,(G.items||1)-1);
 }
 
 /* ---------- HUD / dialogue box ---------- */
@@ -2021,68 +1446,15 @@ function drawTextBox(c){
   const b=G.box;
   c.save();
   if(G.phase==='menu'||G.phase==='post'||G.phase==='toAttack'||G.phase==='text'){
-    // multi-line message support
-    const msg=G.msg||'';
-    if(msg.includes('\n')||msg.length>48){
-      const lines=msg.split('\n');
-      lines.forEach((ln,i)=>text(c,ln,b.x+18,b.y+22+i*16,8,'#fff'));
-    }else{
-      text(c,msg,b.x+18,b.y+30,9,'#fff');
-    }
+    text(c,G.msg||'',b.x+18,b.y+30,9,'#fff');
     if(G.phase==='menu'){
-      if(G.menuMode==='main'){
-        const opts=['FIGHT','ACT','ITEM','MERCY'];
-        const cols=[b.x+28,b.x+168,b.x+308,b.x+448];
-        opts.forEach((o,i)=>{
-          const sel=i===G.menuSel;
-          const pulse=sel?1+0.06*Math.sin((G.btnPulse||0)*8):1;
-          const flash=sel&&G.btnFlash>0;
-          // animated button plate
-          const bw=120,bh=28,bx=cols[i]-6,by=b.y+56;
-          c.save();
-          if(sel){
-            c.shadowColor=flash?'#fff':'#ffe14a';c.shadowBlur=flash?18:10;
-            c.fillStyle=flash?'rgba(255,255,200,.35)':'rgba(255,225,74,.12)';
-            c.fillRect(bx,by,bw,bh);
-            c.strokeStyle='#ffe14a';c.lineWidth=2;
-            c.strokeRect(bx,by,bw,bh);
-          }else{
-            c.fillStyle='rgba(255,255,255,.03)';c.fillRect(bx,by,bw,bh);
-            c.strokeStyle='#4a3f77';c.lineWidth=1;c.strokeRect(bx,by,bw,bh);
-          }
-          c.restore();
-          c.save();
-          if(sel){c.translate(cols[i]+40,b.y+76);c.scale(pulse,pulse);c.translate(-(cols[i]+40),-(b.y+76));}
-          text(c,(sel?'>':' ')+o,cols[i],b.y+76,10,sel?'#ffe14a':'#cfc9ea');
-          c.restore();
-        });
-      }else if(G.menuMode==='act'){
-        text(c,'* What will you do?',b.x+18,b.y+22,8,'#9a8fc9');
-        const acts=['Check','Hold Breath'];
-        acts.forEach((a,i)=>{
-          const sel=i===G.subSel;
-          text(c,(sel?'> ':'  ')+a,b.x+30,b.y+48+i*20,9,sel?'#ffe14a':'#fff');
-        });
-        text(c,'X / Shift: back',b.x+400,b.y+88,7,'#665e8c');
-      }else if(G.menuMode==='item'){
-        text(c,'* Select an ITEM',b.x+18,b.y+18,8,'#9a8fc9');
-        const avail=G.items.filter(it=>it.uses>0);
-        if(avail.length===0)text(c,'* (empty)',b.x+30,b.y+48,9,'#665e8c');
-        else{
-          const start=Math.max(0,Math.min(G.subSel-1,avail.length-3));
-          for(let i=0;i<Math.min(3,avail.length);i++){
-            const it=avail[start+i];
-            const sel=(start+i)===G.subSel;
-            text(c,(sel?'> ':'  ')+it.name+' x'+it.uses,b.x+24,b.y+40+i*18,8,sel?'#ffe14a':'#fff');
-          }
-          const cur=avail[G.subSel];
-          if(cur)text(c,cur.desc,b.x+280,b.y+58,7,'#9a8fc9');
-        }
-        text(c,'X / Shift: back',b.x+400,b.y+88,7,'#665e8c');
-      }else if(G.menuMode==='text'){
-        // message already drawn; prompt
-        if(G.pt>.4)text(c,'Z to continue',b.x+420,b.y+88,7,'#665e8c');
-      }
+      const opts=['FIGHT','ACT','ITEM','MERCY'];
+      const cols=[b.x+30,b.x+180,b.x+330,b.x+460];
+      opts.forEach((o,i)=>{
+        const sel=i===G.menuSel;
+        c.fillStyle=sel?'#ffe14a':'#fff';
+        text(c,(sel?'>':' ')+o,cols[i],b.y+72,10,c.fillStyle);
+      });
     }
   }
   c.restore();
@@ -2114,66 +1486,34 @@ function drawHUD(c){
 }
 let trailTick=0;
 function bossFloat(t,active){
-  // more lively drift + occasional swoop when attacking
-  const amp=active?1.15:1;
-  const ox=(Math.sin(t*.55)*38+Math.sin(t*1.45)*14+Math.sin(t*2.1)*6)*amp;
-  const oy=(Math.cos(t*.42)*22+Math.sin(t*1.05)*10+Math.cos(t*1.8)*5)*amp;
-  // subtle lean / orbit when casting
-  const lean=active?Math.sin(t*1.7)*8:0;
-  return{ox:ox+lean,oy:oy};
+  const amp=active?.4:1;
+  return{ox:(Math.sin(t*.5)*30+Math.sin(t*1.3)*9)*amp,oy:(Math.cos(t*.38)*18+Math.sin(t*.9)*7)*amp};
 }
 function drawPose(c){
-  const fl=bossFloat(G.t,G.pose!=='idle'||G.novaMode);
-  // during nova, center the knight more
-  let bx = G.novaMode ? (W/2 + fl.ox*0.4) : (G.B.x+fl.ox);
-  let by = G.novaMode ? (H/2 - 40 + fl.oy*0.4) : (G.B.y+fl.oy);
-  if(G.phase==='glitchFlee' && G.fleeT>0){
-    // shoot upward / away
-    bx += G.fleeT * 40;
-    by -= G.fleeT * G.fleeT * 180;
-  }
-  if(G.phase==='glitchFlee' && G.glitchT>=0.55 && G.glitchT<1.7){
-    // jitter
-    bx += rnd(-8,8);
-    by += rnd(-6,6);
-  }
+  const fl=bossFloat(G.t,G.pose!=='idle');
+  const bx=G.B.x+fl.ox,by=G.B.y+fl.oy;
   trailTick++;
   if(!G.trail)G.trail=[];
   if(trailTick%2===0){
     G.trail.push({x:bx,y:by,t:G.t,pose:G.pose});
-    if(G.trail.length > (G.novaMode?16:10)) G.trail.shift();
+    if(G.trail.length>10)G.trail.shift();
   }
-  const active = G.pose!=='idle' || G.novaMode;
-  const ghostN = G.novaMode ? G.trail.length : (active?G.trail.length:Math.min(3,G.trail.length));
-  // strong afterimages during nova
+  const active=G.pose!=='idle';
+  const ghostN=active?G.trail.length:Math.min(3,G.trail.length);
   for(let i=0;i<Math.max(0,ghostN-1);i++){
     const gI=G.trail.length-ghostN+i;
     const g2=G.trail[gI];
     if(!g2)continue;
-    const a = G.novaMode
-      ? ((i+1)/ghostN) * 0.45
-      : ((i+1)/ghostN)*(active?.28:.12);
+    const a=(i+1)/ghostN*(active?.28:.12);
     c.save();
     c.globalAlpha=a;
     c.globalCompositeOperation='lighter';
-    if(G.novaMode) c.filter = 'brightness(1.8)';
-    G.B.draw(c,g2.x,g2.y,g2.t,{pose:g2.pose, flash: G.novaMode ? 0.3 : 0});
+    G.B.draw(c,g2.x,g2.y,g2.t,{pose:g2.pose});
     c.restore();
   }
-  // white glow aura when charging / in nova
-  if(G.novaGlow > 0){
-    const g = c.createRadialGradient(bx, by, 10, bx, by, 90 + G.novaGlow*40);
-    g.addColorStop(0, 'rgba(255,255,255,'+(0.55*G.novaGlow)+')');
-    g.addColorStop(0.4, 'rgba(255,200,255,'+(0.25*G.novaGlow)+')');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    c.fillStyle = g;
-    c.fillRect(bx-140, by-140, 280, 280);
-  }
   c.save();
-  if(G.bossFlash>0 || (G.novaGlow||0)>0.5){
-    c.filter = 'brightness('+(2.4 + (G.novaGlow||0)*1.5)+')';
-  }
-  G.B.draw(c,bx,by,G.t,{flash: G.bossFlash || ((G.novaGlow||0)>0.6 ? 0.5 : 0), pose:G.pose});
+  if(G.bossFlash>0)c.filter='brightness(2.4)';
+  G.B.draw(c,bx,by,G.t,{flash:G.bossFlash,pose:G.pose});
   c.restore();
 }
 
@@ -2225,74 +1565,18 @@ function updateGame(dt){
   updateFX(dt);
   const s=G.soul;
   if(G.phase==='menu'){
-    G.btnPulse=(G.btnPulse||0)+dt;
-    if(G.btnFlash>0)G.btnFlash-=dt;
-    if(G.menuMode==='main'){
-      if(isTap('arrowleft','a')){G.menuSel=(G.menuSel+3)%4;sfx('sel');}
-      if(isTap('arrowright','d')){G.menuSel=(G.menuSel+1)%4;sfx('sel');}
-      if(isTap('z','enter',' ')){
-        sfx('sel');G.btnFlash=.25;
-        if(G.menuSel===0){ // FIGHT — timing bar
-          startFightBar();
-        }else if(G.menuSel===1){ // ACT submenu
-          G.menuMode='act';G.subSel=0;
-        }else if(G.menuSel===2){ // ITEM submenu
-          const avail=G.items.filter(it=>it.uses>0);
-          if(avail.length===0){sfx('no');G.msg='* You have no items left.';G.menuMode='text';G.pt=0;}
-          else{G.menuMode='item';G.subSel=0;}
-        }else{ // MERCY / guard
-          G.guard=true;pop(s.x,s.y-4,'Defending...','#8fe3ff');startAttack();
-        }
-      }
-    }else if(G.menuMode==='act'){
-      if(isTap('arrowup','w')){G.subSel=(G.subSel+1)%2;sfx('sel');}
-      if(isTap('arrowdown','s')){G.subSel=(G.subSel+1)%2;sfx('sel');}
-      if(isTap('x','shift','escape')){G.menuMode='main';sfx('sel');}
-      if(isTap('z','enter',' ')){
-        const r=doAct(G.subSel);
-        if(r==='text'){G.menuMode='text';G.pt=0;}
-        else startAttack();
-      }
-    }else if(G.menuMode==='item'){
-      const avail=G.items.filter(it=>it.uses>0);
-      const n=avail.length||1;
-      if(isTap('arrowup','w')){G.subSel=(G.subSel+n-1)%n;sfx('sel');}
-      if(isTap('arrowdown','s')){G.subSel=(G.subSel+1)%n;sfx('sel');}
-      if(isTap('x','shift','escape')){G.menuMode='main';sfx('sel');}
-      if(isTap('z','enter',' ')){
-        if(avail.length===0){G.menuMode='main';return;}
-        const realIdx=G.items.indexOf(avail[G.subSel]);
-        if(useItem(realIdx)){startAttack();}
-        else{/* failed (e.g. full HP) stay in menu */}
-      }
-    }else if(G.menuMode==='text'){
-      G.pt+=dt;
-      if(isTap('z','enter',' ')||G.pt>2.4){G.menuMode='main';G.msg=G.turnDef?G.turnDef.txt:'';startAttack();}
-    }
-    return;
-  }
-  if(G.phase==='fightBar'){
-    updateFX(dt);
-    updateFightBar(dt);
-    updateSlashAnims(dt);
-    return;
-  }
-  if(G.phase==='glitchFlee'){
-    updateFX(dt);
-    G.glitchT += dt;
-    // freeze 0–0.6s, glitch 0.6–1.8s, flee 1.8–3.2s, then victory
-    if(G.glitchT < 0.55){
-      G.bossFlash = 0.4;
-      G.pose = 'idle';
-    } else if(G.glitchT < 1.7){
-      G.bossFlash = Math.random() < 0.4 ? 0.6 : 0;
-      if(Math.random() < 0.15) sfx('crack');
-      G.shake = Math.max(G.shake, 4);
-    } else if(G.glitchT < 3.0){
-      G.fleeT = G.glitchT - 1.7;
-      G.pose = 'cast2';
-    } else {
-      winFight();
+    if(isTap('arrowleft','a'))G.menuSel=(G.menuSel+3)%4,sfx('sel');
+    if(isTap('arrowright','d'))G.menuSel=(G.menuSel+1)%4,sfx('sel');
+    if(isTap('z','enter',' ')){
+      sfx('sel');
+      if(G.menuSel===0){ // FIGHT
+        const dmg=rnd(6,12)+G.tp*.12;G.tp=0;dmgBoss(dmg,{x:G.B.x,y:G.B.y});sfx('boom');G.shake=6;
+        startAttack();
+      }else if(G.menuSel===1){ // ACT
+        if(G.tp>=100){addTP(-100);dmgBoss(G.maxBoss*.22,{x:G.B.x,y:G.B.y});sfx('buster');G.shake=10;pop(320,250,'RUDE BUSTER!','#ffe14a',true);}
+        startAttack();
+      }else if(G.menuSel===2){useItem();startAttack();}
+      else{G.guard=true;pop(s.x,s.y-4,'Defending...','#8fe3ff');startAttack();}
     }
     return;
   }
@@ -2328,50 +1612,12 @@ function renderGame(){
   if(G.shake>0){c.translate(rnd(-1,1)*G.shake*.5,rnd(-1,1)*G.shake*.5);}
   drawBg(c);
   if(G.dark>0){c.fillStyle='rgba(0,0,0,'+G.dark+')';c.fillRect(0,0,W,H);}
-  // shatter pieces (falling shards of the nova screen)
-  if(G.shatterPieces && G.shatterPieces.length){
-    for(const p of G.shatterPieces){
-      if(p.life<=0) continue;
-      c.save();
-      c.globalAlpha = Math.max(0, p.life/p.max);
-      c.translate(p.x, p.y);
-      c.rotate(p.rot);
-      c.fillStyle = p.col;
-      c.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-      c.strokeStyle = 'rgba(255,180,200,0.4)';
-      c.lineWidth = 1;
-      c.strokeRect(-p.w/2, -p.h/2, p.w, p.h);
-      c.restore();
-    }
-  }
   drawPose(c);
-  // glitch overlay during flee sequence
-  if(G.phase==='glitchFlee' && G.glitchT>=0.55 && G.glitchT<1.7){
-    c.save();
-    for(let i=0;i<6;i++){
-      const y = rnd(0,H);
-      const h = rnd(2,10);
-      c.globalAlpha = 0.35;
-      c.fillStyle = pick(['#ff2f55','#8b5cff','#fff','#000']);
-      c.fillRect(0, y, W, h);
-    }
-    // RGB split
-    c.globalAlpha = 0.15;
-    c.globalCompositeOperation = 'lighter';
-    c.fillStyle = '#ff0040';
-    c.fillRect(rnd(-4,4), 0, W, H);
-    c.restore();
-  }
-  if(G.phase==='glitchFlee' && G.fleeT>0){
-    // knight flying off-screen
-    // drawPose already ran; offset is handled via flee in drawPose if we set it
-  }
   drawBoard(c);
   const ents=G.ents.slice().sort((a,b)=>(a.z||0)-(b.z||0));
   for(const e of ents){if(e.draw)e.draw(c,e);}
   for(const sh of G.shots){c.fillStyle=sh.big?'#fff3b0':'#fff';c.beginPath();c.arc(sh.x,sh.y,sh.r,0,TAU);c.fill();if(sh.big){c.strokeStyle='#ffe14a';c.lineWidth=2;c.stroke();}}
   drawSoul(c);
-  drawSlashAnims(c);
   drawFX(c);
   if(G.faceBoard){
     // face board frame redrawn on top edge only (already boxed)
@@ -2382,13 +1628,6 @@ function renderGame(){
   if(G.phase==='menu'||G.phase==='post'||G.phase==='toAttack'){
     c.fillRect(bx.x,bx.y,bx.w,bx.h);c.strokeRect(bx.x,bx.y,bx.w,bx.h);
     drawTextBox(c);
-  }
-  if(G.phase==='fightBar'){
-    // dim menu box area and show timing bar
-    c.fillStyle='rgba(0,0,0,0.55)';
-    c.fillRect(bx.x, bx.y, bx.w, bx.h);
-    c.strokeStyle='#5b3fc4';c.lineWidth=3;c.strokeRect(bx.x,bx.y,bx.w,bx.h);
-    drawFightBar(c);
   }
   if(G.phase==='attack'&&!G.split){/* board already drawn */}
   if(G.flash>0){c.fillStyle=(G.flashCol?hexA(G.flashCol,Math.min(.7,G.flash)):'rgba(255,255,255,'+Math.min(.7,G.flash)+')');c.fillRect(0,0,W,H);}
@@ -2457,7 +1696,7 @@ function menuFrame(dt){
   if(isTap('z','enter',' ')){
     sfx('sel');
     const key=menu.bosses[menu.sel];
-    const hp=key==='knight'?3200:300;
+    const hp=key==='knight'?220:300;
     newFight({boss:key,soul:menu.soul?'yellow':'red',hp:100,bossHp:hp});
   }
 }
