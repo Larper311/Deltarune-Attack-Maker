@@ -217,7 +217,7 @@ function newFight(cfg){
     tp:0,hpBoss:cfg.bossHp,maxBoss:cfg.bossHp,guard:false,shake:0,flash:0,freeze:0,
     pose:'idle',bossFlash:0,dark:0,split:null,faceBoard:null,atkTint:null,
     flags:{phonesHard:false,face:null,neoDone:false,holdBreath:false,novaDone:false},
-    novaMode:false,novaGlow:0,novaHue:0,novaRage:0,novaFinale:false,novaShattered:false,glitchT:0,fleeT:0,
+    novaMode:false,novaGlow:0,novaHue:0,novaFinale:false,novaShattered:false,glitchT:0,fleeT:0,
     menuSel:0,subSel:0,menuMode:'main',
     text:'',ti:0,doneT:-1,lastN:0,msg:'',hurtThisAttack:false,q:0,neoHits:0,
     lastGraze:0,ending:false,endT:0,fb:null,anim:null,tpFlash:0,
@@ -398,38 +398,14 @@ function drawBg(c){
   const th=G.B.theme,bx=G.B.x,by=G.B.y;
   if(G.novaMode){
     const hue = G.novaHue||0;
-    const rage = G.novaRage||0;
-    // Base pink/purple nova field
     const g=c.createRadialGradient(W/2,H/2-20,20,W/2,H/2-20,420);
     g.addColorStop(0, 'rgba('+(180+75*hue)+','+(20+40*hue)+','+(60+120*hue)+','+(0.55+0.25*hue)+')');
     g.addColorStop(0.45, 'rgba('+(90+40*hue)+',10,'+(40+80*hue)+',0.85)');
     g.addColorStop(1, 'rgba(10,0,20,1)');
     c.fillStyle=g;c.fillRect(0,0,W,H);
-    // Strong red rage overlay when crystals are released
-    if(rage > 0.02){
-      const pulse = 0.55 + 0.45*Math.abs(Math.sin(G.t*9));
-      const rg=c.createRadialGradient(W/2,H/2-20,10,W/2,H/2-20,380);
-      rg.addColorStop(0, 'rgba(255,30,50,'+(0.45*rage*pulse)+')');
-      rg.addColorStop(0.4, 'rgba(220,10,40,'+(0.28*rage)+')');
-      rg.addColorStop(1, 'rgba(80,0,20,'+(0.18*rage)+')');
-      c.fillStyle=rg;c.fillRect(0,0,W,H);
-      // Extra red rays on rage
-      c.save();
-      c.globalAlpha = 0.18 * rage * pulse;
-      c.strokeStyle = '#ff4060';
-      c.lineWidth = 3;
-      for(let i=0;i<10;i++){
-        const a=i/10*TAU + G.t*0.22;
-        c.beginPath();
-        c.moveTo(W/2, H/2-20);
-        c.lineTo(W/2+Math.cos(a)*720, H/2-20+Math.sin(a)*720);
-        c.stroke();
-      }
-      c.restore();
-    }
     c.save();
-    c.globalAlpha = 0.12 + 0.1*hue + 0.08*rage;
-    c.strokeStyle = rage>0.1 ? '#ff8090' : '#ffb0d0';
+    c.globalAlpha = 0.12 + 0.1*hue;
+    c.strokeStyle = '#ffb0d0';
     c.lineWidth = 2;
     const rays = 14;
     for(let i=0;i<rays;i++){
@@ -1008,8 +984,8 @@ function drawBall(c,e){
   c.fillStyle=e.col;c.beginPath();c.arc(e.x,e.y,e.r+1.2,0,TAU);c.fill();
   c.fillStyle='#fff';c.beginPath();c.arc(e.x,e.y,e.r*.5,0,TAU);c.fill();
 }
-function drawSpamHead(c,x,y,r,flash){
-  c.fillStyle=flash?'#fff':'#ffe14a';
+function drawSpamHead(c,x,y,r,flash,col){
+  c.fillStyle=flash?'#fff':(col||'#ffe14a');
   c.beginPath();c.arc(x,y,r,0,TAU);c.fill();
   c.fillStyle='#1a1030';
   c.beginPath();c.arc(x-r*.35,y-r*.15,r*.22,0,TAU);c.arc(x+r*.35,y-r*.15,r*.22,0,TAU);c.fill();
@@ -1050,11 +1026,16 @@ function spawnSpamHead(x,y,vx,hp){
   return spawn({kind:'shead',x,y,vx,r:10,life:12,shoot:true,hp,dmg:9,graze:.4,cull:false,fire:rnd(.3,.9),bob:rnd(0,TAU),
     upd(e,dt){
       e.y+=Math.sin(e.t*3+e.bob)*20*dt;e.fire-=dt;
-      if(e.fire<=0&&e.x<G.box.x+G.box.w){e.fire=1.15;aimShot(e.x,e.y,120,'#ffe14a');}
+      if(e.fire<=0&&e.x<G.box.x+G.box.w){e.fire=1.15;aimShot(e.x,e.y,120,'#43a8ff');}
       if(e.x<-40)e.dead=true;
     },
-    onKill(e){burst(e.x,e.y,14,'#ffe14a',180,.6,2);sfx('pop');addTP(2);dmgBoss(10,{x:e.x,y:e.y});},
-    draw(c,e){drawSpamHead(c,e.x,e.y,10,e.flash>0);}});
+    onKill(e){burst(e.x,e.y,14,'#43a8ff',180,.6,2);sfx('pop');addTP(2);dmgBoss(10,{x:e.x,y:e.y});},
+    draw(c,e){drawSpamHead(c,e.x,e.y,10,e.flash>0,'#43a8ff');}});
+}
+function spawnMailHeart(x,y,vx,vy){
+  // always-yellow, NOT shootable — a pure dodge hazard among the destructible blue parts
+  return spawn({kind:'mheart',x,y,vx,vy,r:6,life:9,dmg:9,graze:.5,shoot:false,
+    draw(c,e){c.fillStyle='#ffe14a';heartPath(c,e.x,e.y,6);c.fill();c.strokeStyle='rgba(255,255,255,.5)';c.lineWidth=1;c.stroke();}});
 }
 function bombBoom(e,v){
   if(e.boomed)return;
@@ -1082,21 +1063,33 @@ function* atkMail(v){
     if(v===3&&Math.random()<.55){const lj=(li+rint(1,3))%4;spawnTruck(b.x+b.w+150,lanes[lj],spd,rint(2,3));}
     if(i%2===1)spawnSpamHead(b.x+b.w+30,rnd(b.y+30,b.y+b.h-30),-spd*.85,2);
     if(i%3===2)spawnBomb(rnd(b.x+30,b.x+b.w-30),b.y-8,v);
+    if(i%4===3){
+      const hy=rnd(b.y+30,b.y+b.h-30);
+      spawnMailHeart(b.x+b.w+30,hy,-spd*.55,rnd(-14,14));
+    }
     i++;yield iv;t+=iv;
   }
-  yield* until(()=>!G.ents.some(e=>e.kind==='truck'||e.kind==='shead'||e.kind==='bomb'),7);
+  yield* until(()=>!G.ents.some(e=>e.kind==='truck'||e.kind==='shead'||e.kind==='bomb'||e.kind==='mheart'),7);
   G.pose='idle';
 }
 
 /* ---- Chained Heart ---- */
 function drawHeartFace(c,x,y,s,flash,col){
   c.fillStyle=flash?'#fff':col;heartPath(c,x,y,s);c.fill();
+  c.strokeStyle='rgba(255,255,255,.4)';c.lineWidth=1;heartPath(c,x,y,s);c.stroke();
+  // little antenna
+  c.strokeStyle=flash?'#fff':col;c.lineWidth=1.4;
+  c.beginPath();c.moveTo(x,y-s*.95);c.lineTo(x+s*.15,y-s*1.35);c.stroke();
+  c.fillStyle=flash?'#fff':col;c.beginPath();c.arc(x+s*.15,y-s*1.4,s*.12,0,TAU);c.fill();
+  // big cartoon eyes
+  c.fillStyle='#fff';
+  c.beginPath();c.arc(x-s*.42,y-s*.08,s*.34,0,TAU);c.arc(x+s*.42,y-s*.08,s*.34,0,TAU);c.fill();
   c.fillStyle='#1a1030';
-  c.beginPath();c.arc(x-s*.4,y-s*.05,s*.15,0,TAU);c.arc(x+s*.4,y-s*.05,s*.15,0,TAU);c.fill();
-  c.fillRect(x-s*.35,y+s*.3,s*.7,s*.14);
+  c.beginPath();c.arc(x-s*.36,y-s*.02,s*.16,0,TAU);c.arc(x+s*.48,y-s*.02,s*.16,0,TAU);c.fill();
+  c.fillStyle=flash?'#fff':col;c.fillRect(x-s*.35,y+s*.3,s*.7,s*.14);
 }
-function heartDia(x,y,a,sp){
-  return spawn({kind:'b',fromHeart:true,x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:4.5,col:'#ff5fd0',dmg:9,graze:.45,rot:a,draw:drawDia});
+function heartDia(x,y,a,sp,col){
+  return spawn({kind:'b',fromHeart:true,x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:4.5,col:col||'#f4f0ff',dmg:9,graze:.45,rot:a,draw:drawDia});
 }
 function heartShoot(e,v){
   const t=e.t,base=PI/2;
@@ -1116,17 +1109,17 @@ function* atkHeart(v){
     },
     onHit(){sfx('pop');},
     onKill(e){
-      sfx('boom');burst(e.x,e.y,24,'#ff5fd0',220,.7,3);G.shake=Math.max(G.shake,6);
+      sfx('boom');burst(e.x,e.y,24,'#5ec8ff',220,.7,3);G.shake=Math.max(G.shake,6);
       dmgBoss(G.maxBoss*.03,{x:e.x,y:e.y});
       G.ents.forEach(q=>{if(q.fromHeart||q.kind==='sheart')q.dead=true;});
     },
     draw(c,e){
       c.strokeStyle='rgba(210,210,235,.8)';c.lineWidth=2;
       c.setLineDash([5,3]);c.beginPath();c.moveTo(chest.x,chest.y);c.quadraticCurveTo((chest.x+e.x)/2,Math.max(chest.y,e.y)+30,e.x,e.y);c.stroke();c.setLineDash([]);
-      drawHeartFace(c,e.x,e.y,13,e.flash>0,'#ff5fd0');
+      drawHeartFace(c,e.x,e.y,13,e.flash>0,'#5ec8ff');
       if(yel){
         c.fillStyle='#2a1440';c.fillRect(e.x-16,e.y-22,32,4);
-        c.fillStyle='#ff5fd0';c.fillRect(e.x-16,e.y-22,32*Math.max(0,e.hp/e.hpMax),4);
+        c.fillStyle='#5ec8ff';c.fillRect(e.x-16,e.y-22,32*Math.max(0,e.hp/e.hpMax),4);
       }
     }});
   if(v===3){
@@ -1135,10 +1128,10 @@ function* atkHeart(v){
         upd(e,dt){
           e.x=cx+Math.sin(e.t*1.9+e.ph)*b.w*.42;e.y=b.y+72+Math.sin(e.t*1.2+e.ph)*14;
           e.fire-=dt;
-          if(e.fire<=0){e.fire=.75;spawn({kind:'b',fromHeart:true,x:e.x,y:e.y,vy:130,r:4,col:'#ff9de6',dmg:8,graze:.4,draw:drawBall});}
+          if(e.fire<=0){e.fire=.75;spawn({kind:'b',fromHeart:true,x:e.x,y:e.y,vy:130,r:4,col:'#f4f0ff',dmg:8,graze:.4,draw:drawBall});}
         },
-        onKill(e){burst(e.x,e.y,10,'#ff9de6',150,.5,2);sfx('pop');addTP(2);},
-        draw(c,e){drawHeartFace(c,e.x,e.y,8,e.flash>0,'#ff9de6');}});
+        onKill(e){burst(e.x,e.y,10,'#8fe3ff',150,.5,2);sfx('pop');addTP(2);},
+        draw(c,e){drawHeartFace(c,e.x,e.y,8,e.flash>0,'#8fe3ff');}});
     }
   }
   yield* until(()=>heart.dead,18);
@@ -1196,8 +1189,13 @@ function* atkPipis(v){
 
 /* ---- Gripping Phones ---- */
 function drawPhone(c,e){
-  c.fillStyle='#4b3f7a';c.fillRect(e.x-9,e.y-17,18,34);
-  c.fillStyle='#9fe8ff';c.fillRect(e.x-6,e.y-13,12,20);
+  // green bead-chain clamp look, matching the reference
+  c.fillStyle='#1a3a24';c.fillRect(e.x-9,e.y-17,18,34);
+  c.fillStyle='#0d2216';c.fillRect(e.x-6,e.y-13,12,20);
+  for(let i=-1;i<=1;i++){
+    c.fillStyle='#3ddc6a';c.beginPath();c.arc(e.x-e.side*9,e.y+i*11,3.4,0,TAU);c.fill();
+    c.strokeStyle='rgba(255,255,255,.4)';c.lineWidth=.8;c.stroke();
+  }
   c.fillStyle='#111';c.fillRect(e.x-4,e.y+11,8,3);
   c.strokeStyle='#ffe14a';c.lineWidth=3;
   c.beginPath();c.moveTo(e.x,e.y-17);c.lineTo(e.x-e.side*10,e.y-24);c.stroke();
@@ -1273,10 +1271,10 @@ function partFire(e,hard){
       spawn({kind:'b',x:e.x,y:e.y+8,vx:Math.cos(a)*95,vy:Math.sin(a)*95,r:7,col:'#ff8a2b',dmg:10,graze:.6,draw:drawBall});
     }
   }else{
-    const gx=rnd(b.x+40,b.x+b.w-40);
-    for(let x=b.x+8;x<b.x+b.w;x+=20){
-      if(Math.abs(x-gx)<36)continue;
-      spawn({kind:'b',x,y:b.y+2,vy:95,r:4.5,col:'#ff3fd0',dmg:8,graze:.3,draw:drawBall});
+    const n=hard?8:6,a0=rnd(0,TAU);
+    for(let i=0;i<n;i++){
+      const a=a0+i/n*TAU;
+      spawn({kind:'b',x:e.x,y:e.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,r:4.5,col:'#ffe14a',dmg:8,graze:.35,draw:drawBall});
     }
     sfx('warn');
   }
@@ -1330,24 +1328,38 @@ function drawNeoFace(c,e){
 }
 function* atkNeo(){
   G.pose='neo';
-  const b=G.box,cy=b.y+b.h/2,mx=b.x+b.w+30;
+  const b=G.box,cy=b.y+b.h/2,baseMx=b.x+b.w+95,mx=b.x+b.w+30;
   G.flags.neoDone=true;G.hurtThisAttack=false;
   yield* tween(.8,p=>{G.dark=.92*p;});
-  const face=spawn({kind:'neoface',x:b.x+b.w+95,y:cy,r:60,life:60,shoot:true,hp:1e9,harm:false,cull:false,nomove:true,
-    onHit(e){G.neoHits++;e.flash=.08;sfx('pop');},
+  let pushback=0;
+  const face=spawn({kind:'neoface',x:baseMx,y:cy,r:60,life:60,shoot:true,hp:1e9,harm:false,cull:false,nomove:true,
+    onHit(e){G.neoHits++;e.flash=.08;sfx('pop');pushback=Math.min(85,pushback+15);},
     sdShoot(e,px,py){return (b.x+b.w-50)-px;},
     draw(c,e){drawNeoFace(c,e);}});
+  // ===== phase 1: inhale — shoot the face to push it back or get dragged in =====
   G.neoHits=0;let t=0;
   sfx('charge');
-  while(t<3.4&&G.neoHits<10){
-    for(let k=0;k<2;k++){
-      spawn({kind:'b',x:b.x+rnd(0,60),y:rnd(b.y+8,b.y+b.h-8),r:4,col:'#ff5fd0',dmg:8,graze:.4,sp:40,draw:drawBall,
-        upd(e,dt){e.sp+=dt*300;const a=Math.atan2(cy-e.y,mx-e.x);e.vx=Math.cos(a)*e.sp;e.vy=Math.sin(a)*e.sp;if(e.x>b.x+b.w+16)e.dead=true;}});
+  while(t<4.4&&G.neoHits<16){
+    for(let k=0;k<3;k++){
+      spawn({kind:'b',x:b.x+rnd(0,60),y:rnd(b.y+8,b.y+b.h-8),r:4,col:'#ff5fd0',dmg:9,graze:.4,sp:46,draw:drawBall,
+        upd(e,dt){
+          e.sp+=dt*340;
+          const tx=mx+pushback*.7;
+          const a=Math.atan2(cy-e.y,tx-e.x);
+          e.vx=Math.cos(a)*e.sp;e.vy=Math.sin(a)*e.sp;
+          if(e.x>b.x+b.w+16)e.dead=true;
+        }});
     }
-    G.soul.x+=(24+t*12)*.09;
+    pushback=Math.max(0,pushback-36*.09);
+    face.x=baseMx+pushback;
+    const pull=(30+t*15)*.09*Math.max(.15,1-pushback/75);
+    G.soul.x+=pull;
+    if(G.soul.x>b.x+b.w-16){hurt(9,.5);G.soul.x=b.x+b.w-18;}
     yield .09;t+=.09;
   }
   yield .3;
+  face.x=baseMx;
+  // ===== phase 2: big faces =====
   G.neoHits=0;
   for(let i=0;i<6;i++){
     const y=b.y+24+(i%3)*((b.h-48)/2)+rnd(-10,10);
@@ -1357,6 +1369,7 @@ function* atkNeo(){
     yield .55;
   }
   yield .8;
+  // ===== phase 3: the tall bullet =====
   G.neoHits=0;
   const bar=spawn({kind:'bar',x:mx,y:cy,vx:-95,life:14,cull:false,w:26,h:b.h+30,dmg:12,graze:2,
     sd(e,px,py){return sdBox(px,py,e.x,e.y,e.w/2,e.h/2);},
@@ -1372,6 +1385,22 @@ function* atkNeo(){
   ringShot(bar.x,cy,12,70,'#fff',.1,5);
   yield 2.4;
   yield* until(()=>!G.ents.some(e=>e.kind==='b'||e.kind==='bigface'),4);
+  // ===== phase 4: mouth wide open — massive fire bullets, tight gap =====
+  G.pose='cast';
+  sfx('charge');
+  yield .5;
+  for(let w=0;w<3;w++){
+    const gapY=rnd(b.y+42,b.y+b.h-42),gapH=24;
+    G.flash=.12;G.flashCol='#ff5a2b';sfx('warn');
+    yield .4;
+    for(let y=b.y+4;y<b.y+b.h;y+=14){
+      if(Math.abs(y-gapY)<gapH)continue;
+      spawn({kind:'b',x:b.x+b.w+24,y,vx:-300,r:8,col:'#ff5a2b',dmg:14,graze:.5,draw:drawBall});
+    }
+    sfx('boom');G.shake=Math.max(G.shake,7);
+    yield 1.15;
+  }
+  yield* until(()=>!G.ents.some(e=>e.kind==='b'),4);
   yield* tween(.6,p=>{G.dark=.92*(1-p);});
   face.dead=true;
   if(!G.hurtThisAttack)dmgBoss(G.maxBoss*.05,{x:320,y:120});
@@ -1667,40 +1696,36 @@ function* atkCrystalNova(){
   G.boardCol = 'rgba(255,255,255,0)';
   G.novaGlow = 0;
   G.novaHue = 0;
-  G.novaRage = 0; // 0–1 red pulse intensity during rage release
 
-  // ~2s build-up
-  yield* tween(1.4, p => {
+  yield* tween(1.2, p => {
     G.novaGlow = p;
-    G.dark = 0.14 * p;
-    G.novaHue = p * 0.4;
+    G.dark = 0.12 * p;
+    G.novaHue = p * 0.35;
   });
   sfx('charge');
-  yield* tween(0.6, p => {
+  yield* tween(0.5, p => {
     G.novaGlow = 1;
-    G.novaHue = 0.4 + 0.6 * p;
-    G.dark = 0.14 + 0.22 * p;
+    G.novaHue = 0.35 + 0.65 * p;
+    G.dark = 0.12 + 0.2 * p;
   });
   sfx('big');
-  G.shake = Math.max(G.shake, 7);
-  G.flash = 0.18; G.flashCol = '#ffffff';
+  G.shake = Math.max(G.shake, 6);
+  G.flash = 0.15; G.flashCol = '#ffffff';
 
   const cx = W/2, cy = H/2 - 40;
   const crystals = [];
 
-  // More crystals, staggered over ~11s of incoming waves (total attack ~25s)
+  // trimmed crystal counts (was 8/12/10/6 = 36) for far fewer simultaneous entities
   const patterns = [
-    { n:11, R:[300,400], delay:0.00, size:[16,24], sp:[60,90],  spin:1.1 },
-    { n:13, R:[260,360], delay:0.90, size:[14,22], sp:[75,110], spin:1.6 },
-    { n:14, R:[280,420], delay:1.85, size:[15,26], sp:[65,105], spin:2.0 },
-    { n:12, R:[240,340], delay:2.90, size:[18,28], sp:[80,120], spin:1.4 },
-    { n:13, R:[300,440], delay:3.95, size:[16,30], sp:[70,125], spin:2.4 },
-    { n:10, R:[320,460], delay:5.00, size:[20,32], sp:[85,135], spin:1.0 },
+    { n:6,  R:[300,380], delay:0.00, size:[18,26], sp:[70,100], spin:1.2 },
+    { n:8,  R:[260,340], delay:0.55, size:[14,20], sp:[85,120], spin:1.8 },
+    { n:7,  R:[280,400], delay:1.15, size:[16,26], sp:[60,110], spin:2.2 },
+    { n:4,  R:[320,420], delay:1.75, size:[20,30], sp:[90,130], spin:1.0 },
   ];
 
   for(const pat of patterns){
     for(let i=0;i<pat.n;i++){
-      const a = (i/pat.n)*TAU + rnd(-0.18,0.18) + pat.delay*0.12;
+      const a = (i/pat.n)*TAU + rnd(-0.15,0.15) + pat.delay;
       const R = rnd(pat.R[0], pat.R[1]);
       const ox = cx + Math.cos(a)*R, oy = cy + Math.sin(a)*R;
       const sz = rnd(pat.size[0], pat.size[1]);
@@ -1708,105 +1733,76 @@ function* atkCrystalNova(){
       const ang = Math.atan2(cy-oy, cx-ox);
       const e = spawn({
         kind:'star', x:ox, y:oy, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp,
-        r: sz*0.42, life:22, dmg:11, graze:0.75, harm:true,
+        r: sz*0.45, life:12, dmg:11, graze:0.8, harm:true,
         rot:rnd(0,TAU), spin:pat.spin*(i%2?1:-1),
-        col:pick(['#ff6ad5','#c9a0ff','#ffe14a','#fff','#ff2f55','#e0c0ff','#ff9de6']),
-        size:sz, targetSize:sz, sa:ang, phase:'in', alpha:1,
+        col:pick(['#ff6ad5','#c9a0ff','#ffe14a','#fff','#ff2f55','#e0c0ff']),
+        size:sz, targetSize:sz, sa:ang, phase:'in',
         draw(c,e){
-          // Transparent while gathered at the Knight (performance + visual intent)
-          const a = (e.phase==='held') ? 0.18 : (e.alpha!=null?e.alpha:1);
-          if(a < 0.05) return;
-          c.save();
-          c.globalAlpha = a;
           star6(c, e.x, e.y, e.size, e.rot, e.col);
-          c.restore();
         },
         upd(e,dt){
           if(e.phase==='in'){
             const d = Math.hypot(e.x-cx, e.y-cy);
-            if(d < 60){ e.vx*=0.82; e.vy*=0.82; }
-            if(d < 30){ e.vx=0; e.vy=0; e.phase='held'; e.holdT=0; e.alpha=0.18; }
+            if(d < 55){ e.vx*=0.85; e.vy*=0.85; }
+            if(d < 28){ e.vx=0; e.vy=0; e.phase='held'; e.holdT=0; }
           } else if(e.phase==='held'){
             e.holdT = (e.holdT||0)+dt;
-            e.x = cx + Math.cos(e.sa + e.holdT*0.75)*20;
-            e.y = cy + Math.sin(e.sa + e.holdT*0.75)*20;
-            e.alpha = 0.18;
-          } else {
-            e.alpha = 1;
+            e.x = cx + Math.cos(e.sa + e.holdT*0.8)*22;
+            e.y = cy + Math.sin(e.sa + e.holdT*0.8)*22;
           }
         }
       });
       crystals.push(e);
-      if(i%4===0) sfx('pop');
-      yield 0.045;
+      if(i%3===0) sfx('pop');
+      yield 0.04;
     }
-    yield 0.45; // pause between waves so the attack breathes
+    yield Math.max(0, pat.delay > 0 ? 0.15 : 0.25);
   }
 
-  // Wait until most crystals have arrived, then hold a beat
-  yield* until(() => crystals.filter(c=>!c.dead && c.phase==='held').length >= crystals.length*0.65, 6);
-  yield 1.1;
+  yield* until(() => crystals.filter(c=>!c.dead && c.phase==='held').length >= crystals.length*0.7, 4);
+  yield 0.35;
 
-  // ── RAGE RELEASE ── strong red pulse + cool effects
   G.pose = 'slash';
   sfx('boom'); sfx('buster');
-  G.shake = Math.max(G.shake, 16);
-  G.flash = 0.35; G.flashCol = '#ff2040';
-  G.novaGlow = 1.35;
-  G.atkTint = '255,20,50';
-  G.novaRage = 1;
+  G.shake = Math.max(G.shake, 14);
+  G.flash = 0.22; G.flashCol = '#ffffff';
+  G.novaGlow = 1.2;
 
-  // Crystals become fully opaque and blast outward hard
   for(const e of crystals){
     if(e.dead) continue;
     e.phase = 'out';
-    e.alpha = 1;
-    const a = Math.atan2(e.y-cy, e.x-cx) + rnd(-0.25,0.25);
-    const sp = rnd(340,520); // faster outward
+    const a = Math.atan2(e.y-cy, e.x-cx) + rnd(-0.2,0.2);
+    const sp = rnd(280,420);
     e.vx = Math.cos(a)*sp;
     e.vy = Math.sin(a)*sp;
-    e.spin = rnd(5,10)*(Math.random()<0.5?1:-1);
+    e.spin = rnd(4,8)*(Math.random()<0.5?1:-1);
   }
+  yield 0.55;
 
-  // Strong red screen pulse while they fly out
-  yield* tween(0.7, p => {
-    G.novaRage = 1 - p*0.35;
-    G.dark = 0.25 + 0.2*Math.sin(p*Math.PI*3);
-    G.flash = Math.max(G.flash, 0.12 + 0.18*Math.abs(Math.sin(p*8)));
-    G.flashCol = '#ff1838';
-  });
-
-  // Pull back toward center
   for(const e of crystals){
     if(e.dead) continue;
     e.phase = 'return';
     const a = Math.atan2(cy-e.y, cx-e.x);
-    const sp = rnd(200,300);
+    const sp = rnd(160,240);
     e.vx = Math.cos(a)*sp;
     e.vy = Math.sin(a)*sp;
   }
   sfx('charge');
-  yield* tween(0.55, p => {
-    G.novaRage = 0.65 + 0.35*(1-p);
-  });
+  yield 0.45;
 
-  // EXPLODE — shards travel much farther so they can hit the player
-  G.novaRage = 1;
-  G.flash = 0.4; G.flashCol = '#ff1028';
-  G.shake = Math.max(G.shake, 14);
+  // explode — trimmed shard counts (was 5-8 each) for far fewer entities on screen at once
   for(const e of crystals){
     if(e.dead) continue;
     e.dead = true;
-    burst(e.x, e.y, 8, e.col, 220, 0.55, 3);
-    const nSh = 5 + (e.size>22?3:1); // more shards
+    burst(e.x, e.y, 5, e.col, 140, 0.4, 3);
+    const nSh = 3 + (e.size>24?2:0);
     for(let k=0;k<nSh;k++){
       const a = rnd(0,TAU);
-      // High speed so shards cross the full arena and threaten the soul
-      const sp = rnd(260,480);
+      const sp = rnd(80,160);
       spawn({
         kind:'shard', x:e.x, y:e.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        r: 5.5 + e.size*0.14, life:2.8, fade:0.5, dmg:11, graze:0.55,
-        col: e.col, rot:a, spin:rnd(-6,6),
+        r: 5 + e.size*0.15, life:2.0, fade:0.4, dmg:11, graze:0.5,
+        col: e.col, rot:a, spin:rnd(-4,4),
         draw(c,q){
           const al = q.fade?clamp(q.life/q.fade,0,1):1;
           c.globalAlpha = al;
@@ -1823,50 +1819,43 @@ function* atkCrystalNova(){
     }
   }
   sfx('boom'); sfx('crack');
-  // Keep red pulse going for a moment after detonation
-  yield* tween(0.85, p => {
-    G.novaRage = 1 - p*0.7;
-    G.flash = Math.max(0.08, 0.28*(1-p));
-    G.flashCol = '#ff1838';
-    G.dark = 0.15 + 0.18*Math.abs(Math.sin(p*6));
-  });
-  G.atkTint = null;
-  G.novaRage = 0;
-  yield 0.25;
+  G.shake = Math.max(G.shake, 10);
+  G.flash = 0.2; G.flashCol = '#ffd0ff';
+  yield 0.5;
 
   G.pose = 'slash';
   const th = PI/4 + rnd(-0.08,0.08);
   slashLine(cx, cy, th, {w:16, tele:0.35, dur:0.3, dmg:14, graze:2, len:1500});
-  yield 0.22;
-  slashLine(cx, cy, th+PI/2, {w:14, tele:0.28, dur:0.26, dmg:13, graze:2, len:1500});
   yield 0.2;
+  slashLine(cx, cy, th+PI/2, {w:14, tele:0.28, dur:0.26, dmg:13, graze:2, len:1500});
+  yield 0.18;
   slashLine(cx, cy, th+0.4, {w:12, tele:0.22, dur:0.22, dmg:12, graze:1.5, len:1500});
-  yield 0.4;
+  yield 0.35;
 
   G.novaShattered = true;
   G.shatterPieces = [];
-  for(let i=0;i<16;i++){
+  for(let i=0;i<12;i++){
     G.shatterPieces.push({
       x: rnd(0,W), y: rnd(0,H),
-      vx: rnd(-220,220), vy: rnd(-80,260),
-      rot: rnd(0,TAU), spin: rnd(-5,5),
-      w: rnd(40,130), h: rnd(30,100),
-      life: 1.35, max: 1.35,
-      col: pick(['#5a1020','#3a0a30','#2a1040','#4a1830','#6a1528'])
+      vx: rnd(-180,180), vy: rnd(-60,220),
+      rot: rnd(0,TAU), spin: rnd(-4,4),
+      w: rnd(40,120), h: rnd(30,90),
+      life: 1.2, max: 1.2,
+      col: pick(['#5a1020','#3a0a30','#2a1040','#4a1830'])
     });
   }
   sfx('crack'); sfx('boom');
-  G.shake = Math.max(G.shake, 18);
-  G.flash = 0.35; G.flashCol = '#ffffff';
+  G.shake = Math.max(G.shake, 16);
+  G.flash = 0.3; G.flashCol = '#ffffff';
 
-  yield* tween(1.1, p => {
+  yield* tween(0.9, p => {
     G.novaHue = 1-p;
     G.novaGlow = 1-p;
-    G.dark = 0.32*(1-p);
+    G.dark = 0.35*(1-p);
     for(const pce of G.shatterPieces){
       pce.x += pce.vx * G.dt;
       pce.y += pce.vy * G.dt;
-      pce.vy += 300 * G.dt;
+      pce.vy += 280 * G.dt;
       pce.rot += pce.spin * G.dt;
       pce.life -= G.dt;
     }
@@ -1875,7 +1864,6 @@ function* atkCrystalNova(){
   G.novaMode = false;
   G.novaGlow = 0;
   G.novaHue = 0;
-  G.novaRage = 0;
   G.boardCol = null;
   G.boxT = Object.assign({}, BOX0);
   G.pose = 'idle';
@@ -1887,21 +1875,20 @@ function* atkCrystalNova(){
   G.novaFinale = true;
   G.msg = 'The Knight is exposed... FIGHT!';
   G.pose = 'cast';
-  // Extra finale shards — helps land the full sequence near ~25s
-  for(let wave=0; wave<5; wave++){
-    for(let k=0;k<8;k++){
-      const a = k/8*TAU + wave*0.25;
+  for(let wave=0; wave<3; wave++){
+    for(let k=0;k<6;k++){
+      const a = k/6*TAU + wave*0.3;
       spawn({
-        kind:'shard', x:G.B.x+Math.cos(a)*22, y:G.B.y+Math.sin(a)*22,
-        vx:Math.cos(a)*rnd(130,190), vy:Math.sin(a)*rnd(130,190),
-        r:5.2, life:2.7, fade:0.35, dmg:10, graze:0.4,
+        kind:'shard', x:G.B.x+Math.cos(a)*20, y:G.B.y+Math.sin(a)*20,
+        vx:Math.cos(a)*rnd(100,150), vy:Math.sin(a)*rnd(100,150),
+        r:5, life:2.5, fade:0.3, dmg:10, graze:0.4,
         col:'#c9a0ff', rot:a, draw:drawShard
       });
     }
     sfx('pop');
     yield 0.55;
   }
-  yield 1.1;
+  yield 0.8;
   G.pose = 'idle';
 }
 
@@ -1953,7 +1940,7 @@ function clearAttackDebris(){
 function attackDone(){
   clearAttackDebris();
   G.phase='post';G.pt=0;G.pose='idle';G.atkTint=null;G.split=null;G.faceBoard=null;
-  G.novaMode=false;G.novaGlow=0;G.novaHue=0;G.novaRage=0;G.boardCol=null;
+  G.novaMode=false;G.novaGlow=0;G.novaHue=0;G.boardCol=null;
   if(G.soul.hp<G.soul.maxhp){const heal=Math.max(1,Math.round(G.soul.maxhp*.06));G.soul.hp=Math.min(G.soul.maxhp,G.soul.hp+heal);sfx('heal');pop(G.soul.x,G.soul.y-16,'+'+heal,'#5ef78a',true);}
 }
 function winFight(){
