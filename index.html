@@ -209,6 +209,8 @@ function drawSword(c,x,y,ang,len,w,col,glow){
 
 /* ---------- fight state ---------- */
 function newFight(cfg){
+  // Spamton NEO is always yellow SOUL (shooting required for face / Neo)
+  if(cfg.boss==='spamton') cfg.soul='yellow';
   G={
     cfg,B:BOSSES[cfg.boss],t:0,dt:0,turn:0,turnDef:null,phase:'text',pt:0,
     ents:[],shots:[],parts:[],pops:[],cos:[],soulEchoes:[],
@@ -216,7 +218,7 @@ function newFight(cfg){
     soul:{x:320,y:300,r:3.2,hp:cfg.hp||100,maxhp:cfg.hp||100,inv:0,freeze:0,kx:0,ky:0,side:1,moving:false,slow:false,charge:0,grazeFlash:0,fast:false,fireAng:-PI/2,fireIndicT:0},
     tp:0,hpBoss:cfg.bossHp,maxBoss:cfg.bossHp,guard:false,shake:0,flash:0,freeze:0,
     pose:'idle',bossFlash:0,dark:0,split:null,faceBoard:null,atkTint:null,
-    flags:{phonesHard:false,face:null,neoDone:false,holdBreath:false,novaDone:false},
+    flags:{phonesHard:false,face:null,neoDone:false,holdBreath:false,novaDone:false,rage:false},
     novaMode:false,novaGlow:0,novaHue:0,novaFinale:false,novaShattered:false,glitchT:0,fleeT:0,
     menuSel:0,subSel:0,menuMode:'main',
     text:'',ti:0,doneT:-1,lastN:0,msg:'',hurtThisAttack:false,q:0,neoHits:0,
@@ -1338,94 +1340,156 @@ function* atkFace(v){
   G.pose='idle';
 }
 
-/* ---- Power of NEO ---- */
+/* ---- Power of NEO (money-suck breath) ---- */
+function drawDollar(c,x,y,s,col){
+  c.save();c.translate(x,y);c.scale(s,s);
+  c.fillStyle=col||'#fff';
+  c.font='bold 14px '+FONT;c.textAlign='center';c.textBaseline='middle';
+  c.fillText('$',0,1);
+  c.restore();
+}
+function drawCoinCluster(c,x,y,r,flash){
+  const cols=flash?['#fff','#ffe14a','#fff']:['#ffe14a','#ffd23f','#fff3b0'];
+  for(let i=0;i<5;i++){
+    const a=i/5*TAU+G.t*2,rr=r*(i?0.55:0.9);
+    c.fillStyle=cols[i%3];
+    c.beginPath();c.arc(x+Math.cos(a)*rr*0.4,y+Math.sin(a)*rr*0.4,rr*(i?0.35:0.55),0,TAU);c.fill();
+  }
+  c.fillStyle='#1a1030';c.font='6px '+FONT;c.textAlign='center';c.textBaseline='middle';
+  c.fillText('$',x,y+1);
+}
 function drawNeoFace(c,e){
   const f=e.flash>0;
   c.save();c.translate(e.x,e.y);
-  c.fillStyle=f?'#fff':'#fff3b0';c.beginPath();c.ellipse(0,0,86,110,0,0,TAU);c.fill();
-  c.fillStyle='#ff3fd0';c.beginPath();c.ellipse(-30,-34,17,26,0,0,TAU);c.fill();
-  c.fillStyle='#43a8ff';c.beginPath();c.ellipse(-30,-34,8,14,0,0,TAU);c.fill();
-  c.fillStyle='#1a1030';c.beginPath();c.arc(-30,-34,4,0,TAU);c.fill();
-  c.fillStyle='#1a1030';c.beginPath();c.ellipse(-52,18,24,42,0,0,TAU);c.fill();
-  c.fillStyle='#ff3fd0';for(let i=0;i<4;i++)c.fillRect(-72,-6+i*16,10,8);
+  // head
+  c.fillStyle=f?'#fff':'#fff3b0';c.beginPath();c.ellipse(0,0,52,68,0,0,TAU);c.fill();
+  // glasses
+  c.fillStyle='#43a8ff';c.beginPath();c.ellipse(-18,-22,14,12,0,0,TAU);c.fill();
+  c.fillStyle='#1a1030';c.beginPath();c.arc(-18,-22,5,0,TAU);c.fill();
+  // long nose
+  c.fillStyle=f?'#fff':'#ffe14a';
+  c.beginPath();c.moveTo(-8,-8);c.lineTo(-78,6);c.lineTo(-8,14);c.closePath();c.fill();
+  // mouth
+  c.fillStyle='#1a1030';c.beginPath();c.ellipse(-6,28,22,16,0,0,TAU);c.fill();
+  c.fillStyle='#ff3fd0';for(let i=0;i<5;i++)c.fillRect(-20+i*8,20,5,6);
+  // green vacuum cone indicator (drawn from nose tip toward left)
+  if(e.showCone){
+    const al=0.35+0.25*Math.abs(Math.sin(G.t*6));
+    c.globalAlpha=al;
+    c.fillStyle='#3dff7a';
+    c.beginPath();
+    c.moveTo(-78,6);
+    c.lineTo(-220,-48);
+    c.lineTo(-220,60);
+    c.closePath();c.fill();
+    c.strokeStyle='#5ef78a';c.lineWidth=2;c.stroke();
+    c.globalAlpha=1;
+  }
   c.restore();
 }
 function* atkNeo(){
   G.pose='neo';
-  const b=G.box,cy=b.y+b.h/2,baseMx=b.x+b.w+95,mx=b.x+b.w+30;
+  const b=G.box,cy=b.y+b.h/2,baseMx=b.x+b.w+110;
   G.flags.neoDone=true;G.hurtThisAttack=false;
-  yield* tween(.8,p=>{G.dark=.92*p;});
+  yield* tween(.7,p=>{G.dark=.85*p;});
   let pushback=0;
-  const face=spawn({kind:'neoface',x:baseMx,y:cy,r:60,life:60,shoot:true,hp:1e9,harm:false,cull:false,nomove:true,
-    onHit(e){G.neoHits++;e.flash=.08;sfx('pop');pushback=Math.min(85,pushback+15);},
-    sdShoot(e,px,py){return (b.x+b.w-50)-px;},
+  const face=spawn({kind:'neoface',x:baseMx,y:cy,r:55,life:90,shoot:true,hp:1e9,harm:false,cull:false,nomove:true,
+    showCone:true,
+    onHit(e){G.neoHits++;e.flash=.1;sfx('pop');pushback=Math.min(90,pushback+12);},
+    sdShoot(e,px,py){return Math.hypot(e.x-px,e.y-py)-e.r;},
     draw(c,e){drawNeoFace(c,e);}});
-  // ===== phase 1: inhale — shoot the face to push it back or get dragged in =====
+  // ===== phase 1: MONEY SUCK — $ signs + yellow coin clusters pulled toward face =====
+  // Shoot the head to push it back and weaken the pull.
   G.neoHits=0;let t=0;
   sfx('charge');
-  while(t<4.4&&G.neoHits<16){
-    for(let k=0;k<3;k++){
-      spawn({kind:'b',x:b.x+rnd(0,60),y:rnd(b.y+8,b.y+b.h-8),r:4,col:'#ff5fd0',dmg:9,graze:.4,sp:46,draw:drawBall,
-        upd(e,dt){
-          e.sp+=dt*340;
-          const tx=mx+pushback*.7;
-          const a=Math.atan2(cy-e.y,tx-e.x);
-          e.vx=Math.cos(a)*e.sp;e.vy=Math.sin(a)*e.sp;
-          if(e.x>b.x+b.w+16)e.dead=true;
-        }});
+  while(t<5.2&&G.neoHits<18){
+    // spawn dollar signs and coin clusters from left side of box
+    for(let k=0;k<2;k++){
+      const isCoin=Math.random()<0.4;
+      const sy=rnd(b.y+10,b.y+b.h-10);
+      const sx=b.x+rnd(-20,40);
+      if(isCoin){
+        spawn({kind:'b',x:sx,y:sy,r:7,col:'#ffe14a',dmg:10,graze:.5,sp:40,life:5,cull:false,
+          upd(e,dt){
+            e.sp+=dt*280;
+            const tx=face.x-40, ty=face.y+10;
+            const a=Math.atan2(ty-e.y,tx-e.x);
+            e.vx=Math.cos(a)*e.sp;e.vy=Math.sin(a)*e.sp;
+            if(e.x>face.x-20)e.dead=true;
+          },
+          draw(c,e){drawCoinCluster(c,e.x,e.y,e.r,e.flash>0);}});
+      }else{
+        spawn({kind:'b',x:sx,y:sy,r:5,col:'#fff',dmg:8,graze:.35,sp:50,life:5,cull:false,
+          upd(e,dt){
+            e.sp+=dt*300;
+            const tx=face.x-40, ty=face.y+10;
+            const a=Math.atan2(ty-e.y,tx-e.x);
+            e.vx=Math.cos(a)*e.sp;e.vy=Math.sin(a)*e.sp;
+            if(e.x>face.x-20)e.dead=true;
+          },
+          draw(c,e){drawDollar(c,e.x,e.y,1.1+(e.t%0.4>0.2?0.15:0),e.flash>0?'#fff':'#f4f0ff');}});
+      }
     }
-    pushback=Math.max(0,pushback-36*.09);
+    // slow natural decay of pushback so player must keep shooting
+    pushback=Math.max(0,pushback-28*0.1);
     face.x=baseMx+pushback;
-    const pull=(30+t*15)*.09*Math.max(.15,1-pushback/75);
-    G.soul.x+=pull;
-    if(G.soul.x>b.x+b.w-16){hurt(9,.5);G.soul.x=b.x+b.w-18;}
-    yield .09;t+=.09;
+    // pull SOUL toward the vacuum — weaker when face is pushed back
+    const pullStr=(22+t*12)*0.1*Math.max(0.12,1-pushback/80);
+    G.soul.x+=pullStr;
+    if(G.soul.x>b.x+b.w-14){hurt(10,.45);G.soul.x=b.x+b.w-16;}
+    // gentle vertical drift toward face height
+    G.soul.y+= (cy-G.soul.y)*0.015;
+    yield .1;t+=.1;
   }
-  yield .3;
+  face.showCone=false;
+  yield .25;
   face.x=baseMx;
-  // ===== phase 2: big faces =====
+  // ===== phase 2: big faces flying in =====
   G.neoHits=0;
-  for(let i=0;i<6;i++){
-    const y=b.y+24+(i%3)*((b.h-48)/2)+rnd(-10,10);
-    spawn({kind:'bigface',x:mx,y,vx:-205,r:15,dmg:11,graze:.8,life:6,
-      draw(c,e){drawSpamHead(c,e.x,e.y,15,false);}});
+  for(let i=0;i<5;i++){
+    const y=b.y+28+(i%3)*((b.h-56)/2)+rnd(-8,8);
+    spawn({kind:'bigface',x:b.x+b.w+40,y,vx:-220,r:16,dmg:11,graze:.8,life:5.5,
+      draw(c,e){drawSpamHead(c,e.x,e.y,16,false);}});
     sfx('pipis');
-    yield .55;
+    yield .48;
   }
-  yield .8;
-  // ===== phase 3: the tall bullet =====
+  yield .6;
+  // ===== phase 3: giant dollar bar sweeping left — shoot to break early =====
   G.neoHits=0;
-  const bar=spawn({kind:'bar',x:mx,y:cy,vx:-95,life:14,cull:false,w:26,h:b.h+30,dmg:12,graze:2,
+  const bar=spawn({kind:'bar',x:b.x+b.w+50,y:cy,vx:-110,life:12,cull:false,w:28,h:b.h+40,dmg:13,graze:2,shoot:true,hp:1e9,
+    onHit(e){G.neoHits++;e.flash=.08;sfx('pop');e.vx-=8;},
     sd(e,px,py){return sdBox(px,py,e.x,e.y,e.w/2,e.h/2);},
+    sdShoot(e,px,py){return sdBox(px,py,e.x,e.y,e.w/2,e.h/2);},
     draw(c,e){
-      c.fillStyle='#ff3fd0';c.fillRect(e.x-e.w/2,e.y-e.h/2,e.w,e.h);
+      c.fillStyle=e.flash>0?'#fff':'#ff3fd0';c.fillRect(e.x-e.w/2,e.y-e.h/2,e.w,e.h);
       c.fillStyle='#fff3b0';c.fillRect(e.x-e.w/4,e.y-e.h/2,e.w/2,e.h);
+      for(let i=-3;i<=3;i++) drawDollar(c,e.x,e.y+i*22,1.2,'#ffe14a');
     }});
   sfx('charge');
-  yield* until(()=>bar.x<b.x+b.w*.32||G.neoHits>=14,10);
-  bar.dead=true;sfx('boom');G.flash=.3;G.flashCol='#fff3b0';G.shake=14;
-  ringShot(bar.x,cy-50,14,95,'#ff3fd0',0,5);
-  ringShot(bar.x,cy+50,14,130,'#ffe14a',.2,5);
-  ringShot(bar.x,cy,12,70,'#fff',.1,5);
-  yield 2.4;
-  yield* until(()=>!G.ents.some(e=>e.kind==='b'||e.kind==='bigface'),4);
-  // ===== phase 4: mouth wide open — massive fire bullets, tight gap =====
+  yield* until(()=>bar.x<b.x+b.w*.28||G.neoHits>=16,9);
+  bar.dead=true;sfx('boom');G.flash=.28;G.flashCol='#fff3b0';G.shake=12;
+  ringShot(bar.x,cy-40,12,100,'#ff3fd0',0,5);
+  ringShot(bar.x,cy+40,12,130,'#ffe14a',.15,5);
+  ringShot(bar.x,cy,10,80,'#fff',.08,5);
+  yield 1.8;
+  yield* until(()=>!G.ents.some(e=>e.kind==='b'||e.kind==='bigface'),3.5);
+  // ===== phase 4: mouth blast — dense rows with a moving gap =====
   G.pose='cast';
   sfx('charge');
-  yield .5;
+  yield .4;
   for(let w=0;w<3;w++){
-    const gapY=rnd(b.y+42,b.y+b.h-42),gapH=24;
-    G.flash=.12;G.flashCol='#ff5a2b';sfx('warn');
-    yield .4;
-    for(let y=b.y+4;y<b.y+b.h;y+=14){
+    const gapY=rnd(b.y+40,b.y+b.h-40),gapH=26;
+    G.flash=.1;G.flashCol='#ff5a2b';sfx('warn');
+    yield .35;
+    for(let y=b.y+4;y<b.y+b.h;y+=13){
       if(Math.abs(y-gapY)<gapH)continue;
-      spawn({kind:'b',x:b.x+b.w+24,y,vx:-300,r:8,col:'#ff5a2b',dmg:14,graze:.5,draw:drawBall});
+      spawn({kind:'b',x:b.x+b.w+28,y,vx:-310,r:7,col:'#ff5a2b',dmg:13,graze:.45,draw:drawBall});
     }
-    sfx('boom');G.shake=Math.max(G.shake,7);
-    yield 1.15;
+    sfx('boom');G.shake=Math.max(G.shake,6);
+    yield 1.05;
   }
-  yield* until(()=>!G.ents.some(e=>e.kind==='b'),4);
-  yield* tween(.6,p=>{G.dark=.92*(1-p);});
+  yield* until(()=>!G.ents.some(e=>e.kind==='b'),3.5);
+  yield* tween(.55,p=>{G.dark=.85*(1-p);});
   face.dead=true;
   if(!G.hurtThisAttack)dmgBoss(G.maxBoss*.05,{x:320,y:120});
   G.pose='idle';
@@ -1552,6 +1616,11 @@ const BOSSES={
       if(!G.flags.novaDone && G.hpBoss <= G.maxBoss * 0.75){
         return atkCrystalNova();
       }
+      // After Crystal Nova exposure: if player did not land a FIGHT, pure RAGE
+      if(G.novaFinale || G.flags.rage){
+        G.flags.rage = false;
+        return atkRage();
+      }
       if(a.a==='stars')return atkStars(a.v);
       if(a.a==='tracking')return atkTracking(a.v);
       if(a.a==='splitter')return atkSplitter(a.v);
@@ -1668,6 +1737,8 @@ function updateFightBar(dt){
         }
       } else {
         pop(320, 250, 'MISS', '#9a8fc9', true);
+        // Missed while Knight is exposed — next attack is pure RAGE
+        if(G.novaFinale) G.flags.rage = true;
       }
       startAttack();
       G.fightBar = null;
@@ -1753,6 +1824,60 @@ function drawSlashAnims(c){
 }
 
 /* ---------- Crystal Nova ---------- */
+/* ---- Pure RAGE (post-Nova, if player did not FIGHT) ---- */
+function* atkRage(){
+  G.pose='slash';
+  G.atkTint='255,40,60';
+  G.msg='The Knight erupts in pure RAGE...';
+  const b=G.box;
+  sfx('warn');sfx('charge');
+  G.shake=Math.max(G.shake,8);
+  G.flash=.18;G.flashCol='#ff2f55';
+  yield .35;
+
+  // rapid cross-slashes centered on SOUL
+  for(let wave=0;wave<4;wave++){
+    const cx=clamp(G.soul.x,b.x+30,b.x+b.w-30);
+    const cy=clamp(G.soul.y,b.y+24,b.y+b.h-24);
+    const a0=rnd(0,PI);
+    for(let k=0;k<3;k++){
+      slashLine(cx,cy,a0+k*(PI/3),{w:11,tele:0.14,dur:0.14,dmg:14,graze:1.2,len:1400});
+    }
+    sfx('slash');
+    yield 0.32;
+  }
+
+  // dense tracking star barrage
+  for(let i=0;i<10;i++){
+    const a=rnd(0,TAU),R=rnd(180,280);
+    const ox=G.soul.x+Math.cos(a)*R, oy=G.soul.y+Math.sin(a)*R;
+    const ang=Math.atan2(G.soul.y-oy,G.soul.x-ox);
+    spawn({
+      kind:'star',x:ox,y:oy,vx:Math.cos(ang)*220,vy:Math.sin(ang)*220,
+      r:7,life:2.2,dmg:12,graze:.6,rot:rnd(0,TAU),spin:rnd(3,6)*(Math.random()<0.5?1:-1),
+      col:pick(['#ff2f55','#ff6ad5','#ffe14a','#fff']),
+      size:14,
+      draw(c,e){star6(c,e.x,e.y,e.size,e.rot,e.col);}
+    });
+    if(i%2===0)sfx('pop');
+    yield 0.12;
+  }
+  yield 0.45;
+
+  // final dual rotating slash storm
+  const C={x:clamp(G.soul.x,b.x+34,b.x+b.w-34),y:clamp(G.soul.y,b.y+28,b.y+b.h-28)};
+  let a=rnd(0,PI);
+  for(let k=0;k<10;k++){
+    slashLine(C.x,C.y,a,{w:9,tele:0.18,dur:0.12,dmg:13,graze:1.4,len:1400});
+    a+=0.42;
+    yield 0.09;
+  }
+  yield 0.6;
+  G.atkTint=null;
+  G.pose='idle';
+  // novaFinale stays true — player can still land FIGHT next turn to finish the Knight
+}
+
 function* atkCrystalNova(){
   G.pose = 'spread';
   G.flags.novaDone = true;
@@ -2460,22 +2585,28 @@ function menuFrame(dt){
     if(best)text(c,'best: turn '+best,x+cardW/2,y+cardH-4,7,'#7a6fa0','center');
     c.restore();
   }
+  const spamSel = menu.bosses[menu.sel]==='spamton';
   text(c,'SOUL MODE',W/2,428,9,'#9a8fc9','center');
-  const modes=[['RED — dodge only','#ff2a4d'],['YELLOW — shoot back','#ffe14a']];
-  modes.forEach((m,i)=>{
-    const sel=i===menu.soul,mx=W/2+(i-0.5)*180;
-    text(c,(sel?'> ':'  ')+m[0],mx,450,8,sel?m[1]:'#665e8c','center');
-  });
+  if(spamSel){
+    text(c,'> YELLOW — shoot back (forced for Spamton NEO)',W/2,450,8,'#ffe14a','center');
+  }else{
+    const modes=[['RED — dodge only','#ff2a4d'],['YELLOW — shoot back','#ffe14a']];
+    modes.forEach((m,i)=>{
+      const sel=i===menu.soul,mx=W/2+(i-0.5)*180;
+      text(c,(sel?'> ':'  ')+m[0],mx,450,8,sel?m[1]:'#665e8c','center');
+    });
+  }
   text(c,'Arrows: choose   Z / Enter: start   (WASD also moves in-fight)',W/2,472,7,'#665e8c','center');
 
   if(isTap('arrowleft','a'))menu.sel=(menu.sel+1)%2,sfx('sel');
   if(isTap('arrowright','d'))menu.sel=(menu.sel+1)%2,sfx('sel');
-  if(isTap('arrowup','arrowdown','w','s'))menu.soul=1-menu.soul,sfx('sel');
+  if(!spamSel && isTap('arrowup','arrowdown','w','s'))menu.soul=1-menu.soul,sfx('sel');
   if(isTap('z','enter',' ')){
     sfx('sel');
     const key=menu.bosses[menu.sel];
     const hp=key==='knight'?3200:300;
-    newFight({boss:key,soul:menu.soul?'yellow':'red',hp:100,bossHp:hp});
+    const soul = key==='spamton' ? 'yellow' : (menu.soul?'yellow':'red');
+    newFight({boss:key,soul,hp:100,bossHp:hp});
   }
 }
 
