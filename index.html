@@ -1,7 +1,8 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>OMEGA-9 — The Arbiter</title>
 <style>html,body{margin:0;background:#000;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}canvas{width:min(100vw,calc(100vh*4/3));height:auto;image-rendering:pixelated;background:#000}</style></head><body><canvas id="c" width="800" height="600"></canvas><script>
 // ===== TUNING =====
-const PLAYER_HP=40, BOSS_HP=900;
+const PLAYER_HP=40, BOSS_HP=1300;
+const PH=[1,1.15,1.3],DM=[1.1,1.3,1.5]; // phase speed / damage multipliers
 // ==================
 const cv=document.getElementById('c'),g=cv.getContext('2d'),W=800,H=600,TAU=Math.PI*2;
 const keys={},press={};
@@ -19,6 +20,7 @@ let box={...MENU},boxT={...MENU},msg='',msgI=0,msgCb=null,say='',sayT=0,sel=0,su
 let pl={x:400,y:380,vg:0,mode:'red',gx:0,gy:1,mv:0,sh:0},hz=[],pt=[],atk=null,atkS={},atkT=0,fb={c:0};
 const bc=()=>box.x+box.w/2,bcy=()=>box.y+box.h/2;
 const stars=Array.from({length:70},()=>({x:rnd(0,W),y:rnd(0,300),s:rnd(.3,1.2)}));
+let lastPh=0,capT=0,capTxt='';const cap=(t,d=3)=>{capTxt=t;capT=d};const phase=()=>bHP/bMax<.35?2:bHP/bMax<.7?1:0;
 function setMsg(t,cb){msg=t;msgI=0;msgCb=cb||null}
 function bossSay(t,d=3.2){say=t;sayT=d}
 const puff=(x,y,n,c,sp=90)=>{for(let i=0;i<n;i++){const a=rnd(0,TAU),s=rnd(.3,1)*sp;pt.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,l:rnd(.3,.7),c})}};
@@ -37,7 +39,7 @@ function orb(x,y,vx,vy,r,sty,o={}){return add(Object.assign({k:'o',x,y,vx,vy,r,s
 function drawOrb(h){const s=h.sty,al=h.t<(h.arm||0)?.4:1,ang=Math.atan2(h.vy,h.vx);g.save();g.translate(Math.round(h.x),Math.round(h.y));g.globalAlpha=al;
  if(s=='spore'){g.rotate(h.rot);g.fillStyle='#8f4';for(let i=0;i<6;i++){g.rotate(TAU/6);g.beginPath();g.moveTo(-3,6);g.lineTo(0,16);g.lineTo(3,6);g.fill()}g.fillStyle='#2f8a4a';g.beginPath();g.arc(0,0,9,0,TAU);g.fill();g.fillStyle='#d6ff7a';g.beginPath();g.arc(-2,-2,3,0,TAU);g.fill()}
  else if(s=='shard'){g.rotate(ang);g.fillStyle='#ff3b4e';g.beginPath();g.moveTo(16,0);g.lineTo(-8,-6);g.lineTo(-14,0);g.lineTo(-8,6);g.fill();g.fillStyle='#fff';g.fillRect(-6,-1,16,2);g.globalAlpha=al*.3;g.fillStyle='#ff3b4e';g.fillRect(-46,-3,32,6)}
- else if(s=='blade'){g.rotate(h.rot);g.fillStyle='#dfe8ff';g.beginPath();g.arc(0,0,17,-1.9,1.9);g.arc(8,0,13,1.9,-1.9,true);g.closePath();g.fill();g.strokeStyle='#7af';g.lineWidth=2;g.stroke()}
+ else if(s=='blade'){g.rotate(h.rot);g.scale(h.sc||1,h.sc||1);g.fillStyle='#dfe8ff';g.beginPath();g.arc(0,0,17,-1.9,1.9);g.arc(8,0,13,1.9,-1.9,true);g.closePath();g.fill();g.strokeStyle='#7af';g.lineWidth=2;g.stroke()}
  else if(s=='wasp'){g.rotate(h.a);const f=Math.sin(h.t*45);g.fillStyle='#ffd0f0';g.globalAlpha=al*.7;g.beginPath();g.ellipse(-3,-7,9,3+f*3,.5,0,TAU);g.fill();g.beginPath();g.ellipse(-3,7,9,3+f*3,-.5,0,TAU);g.fill();g.globalAlpha=al;g.fillStyle='#a3203a';g.beginPath();g.ellipse(0,0,11,5.5,0,0,TAU);g.fill();g.fillStyle='#ffd84a';g.fillRect(-4,-5,3,10);g.fillRect(2,-5,3,10);g.fillStyle='#fff';g.beginPath();g.moveTo(11,-2);g.lineTo(19,0);g.lineTo(11,2);g.fill()}
  else if(s=='frag'){g.rotate(ang);g.fillStyle='#ff7ad9';g.beginPath();g.moveTo(8,0);g.lineTo(0,-4);g.lineTo(-6,0);g.lineTo(0,4);g.fill()}
  g.restore()}
@@ -48,7 +50,7 @@ function spear(dir,sp,ty,d0=230){const ang=[-Math.PI/2,0,Math.PI/2,Math.PI][dir]
   if(h.ty=='f'){if(!h.ph&&h.d<150){h.ph=1;h.t1=h.t}if(h.ph==1){v=-h.sp*.8;if(h.t-h.t1>.45)h.ph=2}else if(h.ph==2)v=h.sp*2.3}
   if(h.ty=='w'){if(!h.ph&&h.d<100){h.ph=1;h.t1=h.t}if(h.ph==1){v=0;if(h.t-h.t1>.5)h.ph=2}else if(h.ph==2)v=h.sp*2.6}
   h.d-=v*dt;
-  if(h.d<=28){if(pl.sh==h.dir){h.dead=1;puff(pl.x+Math.cos(h.ang)*26,pl.y+Math.sin(h.ang)*26,10,'#5ff',110);shFlash=.15;beep(1100,.05,'square',.05)}else if(h.d<=10){h.dead=1;hurt(h.dmg,pl.x,pl.y)}}},
+  if(h.d<=42){if(pl.sh==h.dir){h.dead=1;puff(pl.x+Math.cos(h.ang)*26,pl.y+Math.sin(h.ang)*26,10,'#5ff',110);shFlash=.15;beep(1100,.05,'square',.05)}else if(h.d<=12){h.dead=1;hurt(h.dmg,pl.x,pl.y)}}},
  draw(h){const x=pl.x+Math.cos(h.ang)*h.d,y=pl.y+Math.sin(h.ang)*h.d;g.save();g.translate(Math.round(x),Math.round(y));g.rotate(h.ang+Math.PI);
   g.globalAlpha=.25;g.fillStyle=h.col;g.fillRect(-120,-4,76,8);g.globalAlpha=1;g.fillStyle='#cfe';g.fillRect(-44,-2,46,4);
   g.fillStyle=h.col;g.beginPath();g.moveTo(0,-9);g.lineTo(26,0);g.lineTo(0,9);g.lineTo(6,0);g.fill();g.beginPath();g.moveTo(-44,0);g.lineTo(-54,-8);g.lineTo(-48,0);g.lineTo(-54,8);g.fill();g.fillStyle='#fff';g.fillRect(2,-1,16,2);g.restore()}})}
@@ -114,15 +116,41 @@ function wUpd(h,dt){const a=Math.atan2(pl.y-h.y,pl.x-h.x);let d=a-h.a;d=Math.ata
  if(!h.in&&h.y>box.y+16)h.in=1;
  if(h.in&&(h.x<box.x+7||h.x>box.x+box.w-7||h.y<box.y+7||h.y>box.y+box.h-7)){h.dead=1;puff(h.x,h.y,12,'#ff7ad9',150);beep(200,.1);for(let i=0;i<6;i++){const b=i*TAU/6+h.a;orb(h.x,h.y,Math.cos(b)*210,Math.sin(b)*210,5,'frag',{dmg:6,life:.9})}}}
 
-// ===== the nine verdicts =====
+const bez=(u,P0,C,P1)=>({x:(1-u)*(1-u)*P0.x+2*(1-u)*u*C.x+u*u*P1.x,y:(1-u)*(1-u)*P0.y+2*(1-u)*u*C.y+u*u*P1.y});
+function boom(){const B={x:400,y:170},T={x:clamp(pl.x+rnd(-30,30),box.x+20,box.x+box.w-20),y:clamp(pl.y+rnd(-20,20),box.y+20,box.y+box.h-20)},sd=Math.random()<.5?1:-1,dx=T.x-B.x,dy=T.y-B.y,L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L,mx=(B.x+T.x)/2,my=(B.y+T.y)/2,C1={x:mx+nx*170*sd,y:my+ny*170*sd},C2={x:mx-nx*170*sd,y:my-ny*170*sd},dur=1.15;
+ add({k:'pw',life:2*dur,draw(h){const p1=h.t<.8,p2=h.t>dur-.5&&h.t<dur+.3;if(!p1&&!p2)return;g.globalAlpha=.5;g.strokeStyle='#7af';g.lineWidth=2;g.setLineDash([6,6]);g.beginPath();for(let u=0;u<=1.001;u+=.05){const p=bez(u,B,p1?C1:C2,T);u?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y)}g.stroke();g.setLineDash([]);g.globalAlpha=1}});
+ orb(B.x,B.y,0,0,18,'blade',{dmg:11,life:2*dur+.05,spin:12,arm:.3,sc:1.4,upd(h,dt){const p=h.t<dur?bez(h.t/dur,B,C1,T):bez(clamp((2*dur-h.t)/dur,0,1),B,C2,T);h.x=p.x;h.y=p.y;h.rot+=h.spin*dt;if(Math.random()<.6)puff(h.x,h.y,1,'#7af',25)}})}
+function sigil(x,y,r,warn){add({k:'sg',x,y,r,warn,life:warn+.55,dmg:11,
+ hit:(px,py,h)=>h.t>h.warn&&h.t<h.warn+.3&&Math.hypot(px-h.x,py-h.y)<h.r+3,
+ draw(h){g.save();g.translate(h.x,h.y);
+  if(h.t<h.warn){const k=h.t/h.warn;g.globalAlpha=.55+.35*Math.sin(h.t*22);g.strokeStyle='#c9a6ff';g.lineWidth=2;g.beginPath();g.arc(0,0,h.r,0,TAU);g.stroke();g.rotate(h.t*3);for(let tr=0;tr<2;tr++){g.beginPath();for(let i=0;i<3;i++){const a=tr*Math.PI/3+i*TAU/3;g.lineTo(Math.cos(a)*h.r*.9,Math.sin(a)*h.r*.9)}g.closePath();g.stroke()}g.fillStyle='rgba(200,150,255,'+.25*k+')';g.beginPath();g.arc(0,0,h.r*k,0,TAU);g.fill()}
+  else{const lt=h.t-h.warn,f=1-lt/.55;g.globalCompositeOperation='lighter';g.globalAlpha=clamp(f,0,1);g.fillStyle='#d9b8ff';g.fillRect(-h.r*.8,-320,h.r*1.6,330);g.fillStyle='#fff';g.fillRect(-h.r*.3,-320,h.r*.6,330);g.beginPath();g.arc(0,0,h.r*(1+lt),0,TAU);g.fill();g.globalCompositeOperation='source-over'}
+  g.restore()}})}
+function web(pts,star,warn,on){const E=[],n=pts.length;for(let i=0;i<n;i++)E.push([pts[i],pts[(i+(star?2:1))%n]]);
+ add({k:'wb',life:warn+on+.2,warn,on,dmg:11,
+ hit:(px,py,h)=>h.t>h.warn&&h.t<h.warn+h.on&&E.some(e=>segDist(px,py,e[0].x,e[0].y,e[1].x,e[1].y)<9),
+ draw(h){const live=h.t>h.warn&&h.t<h.warn+h.on;
+  for(const p of pts){g.fillStyle='#2a2148';g.fillRect(p.x-6,p.y-14,12,28);g.strokeStyle='#8cf';g.lineWidth=2;g.beginPath();g.arc(p.x,p.y-16,8+(live?3:0)+Math.sin(h.t*30)*1.5,0,TAU);g.stroke();g.fillStyle=live?'#fff':'#8cf';g.beginPath();g.arc(p.x,p.y-16,4,0,TAU);g.fill()}
+  for(const e of E){if(!live){g.globalAlpha=.3+.2*Math.sin(h.t*25);g.strokeStyle='#8cf';g.lineWidth=1;g.setLineDash([4,8]);g.beginPath();g.moveTo(e[0].x,e[0].y);g.lineTo(e[1].x,e[1].y);g.stroke();g.setLineDash([]);g.globalAlpha=1}
+   else for(let k=0;k<2;k++){g.strokeStyle=k?'#fff':'#7cf';g.lineWidth=k?2:6;g.beginPath();g.moveTo(e[0].x,e[0].y);const N=10,dx=e[1].x-e[0].x,dy=e[1].y-e[0].y,L=Math.hypot(dx,dy)||1;for(let i=1;i<N;i++){const o=rnd(-9,9);g.lineTo(e[0].x+dx*i/N-dy/L*o,e[0].y+dy*i/N+dx/L*o)}g.lineTo(e[1].x,e[1].y);g.stroke()}}}})}
+function rpts(n){const out=[];let tries=0;while(out.length<n&&tries++<200){const p={x:rnd(box.x+30,box.x+box.w-30),y:rnd(box.y+34,box.y+box.h-24)};if(Math.hypot(p.x-pl.x,p.y-pl.y)>40&&out.every(q=>Math.hypot(p.x-q.x,p.y-q.y)>70))out.push(p)}return out}
+function grid(cells,warn,on){add({k:'gr',cells,warn,on,life:warn+on+.1,dmg:11,
+ hit:(px,py,h)=>{if(h.t<h.warn||h.t>h.warn+h.on)return false;const c=Math.floor((px-box.x)/(box.w/8)),r=Math.floor((py-box.y)/(box.h/3));return h.cells.some(q=>q[0]==c&&q[1]==r)},
+ draw(h){const cw=box.w/8,ch=box.h/3,live=h.t>h.warn&&h.t<h.warn+h.on;for(const[c,r]of h.cells){const x=box.x+c*cw,y=box.y+r*ch;
+  if(!live){g.globalAlpha=.25+.2*Math.sin(h.t*25+c);g.fillStyle='#ff2bd6';g.fillRect(x+2,y+2,cw-4,ch-4);g.globalAlpha=.9;g.strokeStyle='#ff2bd6';g.lineWidth=2;g.strokeRect(x+3,y+3,cw-6,ch-6);g.globalAlpha=1}
+  else{g.fillStyle='#120018';g.fillRect(x,y,cw,ch);for(let k=0;k<14;k++){g.fillStyle=['#fff','#ff2bd6','#2bf6ff'][k%3];g.fillRect(x+rnd(0,cw-26),y+rnd(0,ch-4),rnd(6,26),3)}g.strokeStyle='#fff';g.lineWidth=2;g.strokeRect(x+1,y+1,cw-2,ch-2)}}
+  g.globalAlpha=1}})}
+const cellsWhere=f=>{const a=[];for(let c=0;c<8;c++)for(let r=0;r<3;r++)if(f(c,r))a.push([c,r]);return a};
+const HINTS=['ARROW KEYS aim your shield. Block every spear!','BLUE = freeze. ORANGE = keep moving.','Hide in the green-dashed gap!','Wait for the solid line, THEN move.','Jump away from the floor. Stay off spikes.','Two hearts: keep BOTH safe.','Resist the pull. Cross the shockwave.','Lure wasps into walls. Dodge the burst.','Crescents RETURN on a new path. Dodge twice!','Rune circles ERUPT. Leave before they pop.','Lightning links the pylons. Avoid the web.','Glitched tiles turn deadly. Find the clean ones.'];
+// ===== the verdicts =====
 const A=[
-{n:'SPEARSTORM',d:12,say:'Hold your shield. Every spear is a sentence.',tip:'GREEN SOUL cannot move. Press arrow keys to point your shield at each spear. Yellow spears feint and retreat; red spears stop, then rush.',
- init(){mode('green');boxT=bx(240)},
- tick(S,dt,t){S.n=(S.n??.7)-dt;if(S.n>0)return;
-  if(t<3.5){S.n=.62;spear(rd4(),175,'n')}
-  else if(t<7){S.n=.75;const a=rd4();spear(a,185,'n');spear((a+2)%4,185,'f',270)}
-  else if(t<10){S.n=1.25;[0,1,2,3].sort(()=>Math.random()-.5).forEach((d,i)=>spear(d,175,'n',230+i*70))}
-  else{S.n=.62;spear(rd4(),200,'nfw'[Math.random()*3|0]);if(Math.random()<.35)spear(rd4(),200,'n',300)}}},
+{n:'SPEARSTORM',d:12,say:'Hold your shield. Every spear is a sentence.',tip:'GREEN SOUL cannot move. Press arrow keys to aim your shield at each spear. Yellow spears fake out: wait for the real thrust.',
+ init(S){mode('green');boxT=bx(240);S.q=[[7,()=>cap('YELLOW spears fake out, then rush. Keep aiming!',3.5)]]},
+ tick(S,dt,t){TL(S,t);S.n=(S.n??.9)-dt;if(S.n>0)return;
+  if(t<3.5){S.n=.85;spear(rd4(),150,'n')}
+  else if(t<7){S.n=1.05;const a=rd4();spear(a,150,'n');spear((a+2)%4,150,'n',290)}
+  else if(t<10.5){S.n=1.15;spear(rd4(),150,'f',250);if(Math.random()<.5)spear(rd4(),150,'n',330)}
+  else{S.n=1.3;[0,1,2,3].sort(()=>Math.random()-.5).forEach((d,i)=>spear(d,155,'n',240+i*75))}}},
 {n:'PLASMA TIDE',d:12,say:'Burn or freeze. Choose correctly.',tip:'BLUE plasma burns if you MOVE. ORANGE plasma burns if you STAND STILL. Tridents ignore all rules: leave their lane.',
  init(S){mode('red');boxT=bx(380);
   const cols=(types,warn,on,step=.16)=>{const a=[...types],w=box.w/a.length;a.forEach((r,i)=>flame(box.x+w*(i+.5),w-2,r,warn+i*step,on))};
@@ -161,25 +189,47 @@ const A=[
 {n:'SEEKER SWARM',d:11,say:'You cannot outrun a verdict.',tip:'Seekers home in on you. They detonate into shards when they hit a wall: circle them into the edges, then dodge the burst.',
  init(){mode('red');boxT=bx(460)},
  tick(S,dt,t){S.n=(S.n??.5)-dt;if(S.n<=0){S.n=t>5?1.1:1.5;if(hz.filter(h=>h.sty=='wasp').length<(t>5?6:4)){orb(bc()+rnd(-150,150),190,0,0,9,'wasp',{a:Math.PI/2,sp:150,tr:1.7,dmg:8,life:5.5,upd:wUpd});beep(500,.06)}}}},
-{n:'OMEGA PROTOCOL',d:20.4,say:'FINAL VERDICT. NO APPEAL.',tip:'Everything at once. Read each segment fast.',
- init(S){S.i=-1;S.seg=[0,2,4,5,3,7];flash=.6},
- tick(S,dt,t){const i=Math.min(5,Math.floor(t/3.4));if(i!=S.i){S.i=i;hz=[];S.sub={};flash=.45;const a=A[S.seg[i]];a.init(S.sub);centerPl();bnr={t:1.2,txt:a.n}}A[S.seg[i]].tick(S.sub,dt,t-i*3.4)}}
+{n:'CRESCENT RECALL',d:12,say:'What I throw, returns.',tip:'Giant crescents curve out, then RETURN on a different path. Dodge twice.',
+ init(){mode('red');boxT=bx(440)},
+ tick(S,dt,t){S.n=(S.n??.4)-dt;if(S.n<=0){S.n=t<5?1.9:1.5;boom();if(phase()>0&&t>4)boom();beep(260,.1)}}},
+{n:'SIGIL CASCADE',d:12,say:'Kneel where you stand.',tip:'Rune circles detonate into pillars of light. Leave each one before it erupts.',
+ init(S){mode('red');boxT=bx(420);
+  S.q=[[.3,()=>{for(let i=0;i<7;i++)sigil(box.x+34+i*(box.w-68)/6,box.y+rnd(40,box.h-40),30,1+i*.18)}],
+   [3.2,()=>{sigil(pl.x,pl.y,34,1.1);[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(d=>sigil(clamp(pl.x+d[0]*62,box.x+20,box.x+box.w-20),clamp(pl.y+d[1]*50,box.y+20,box.y+box.h-20),28,1.1))}],
+   [5.4,()=>{for(let i=0;i<10;i++)sigil(rnd(box.x+30,box.x+box.w-30),rnd(box.y+30,box.y+box.h-30),28,1+i*.13)}],
+   [8,()=>{for(let i=0;i<8;i++){const a=i*TAU/8;sigil(bc()+Math.cos(a)*100,bcy()+Math.sin(a)*48,26,.9+i*.15)}}],
+   [10.2,()=>{for(let i=0;i<7;i++)sigil(box.x+box.w-34-i*(box.w-68)/6,clamp(pl.y+rnd(-30,30),box.y+25,box.y+box.h-25),30,.9+i*.16)}]]},
+ tick(S,dt,t){TL(S,t)}},
+{n:'TESLA WEB',d:11,say:'Every conductor is a verdict.',tip:'Lightning links the pylons into a web. Stay off the lines and the pylons.',
+ init(){mode('red');boxT=bx(440)},
+ tick(S,dt,t){S.w=(S.w??.4)-dt;if(S.w<=0){S.w=2.1;const n=t<3?3:t<7?4:5,p=rpts(n);if(p.length>=3)web(p,p.length==5,.9,.5);beep(700,.05)}}},
+{n:'DATA CORRUPTION',d:12,say:'Your world is a file. I am deleting it.',tip:'Magenta tiles flash, then become deadly static. Stand on a clean tile.',
+ init(S){mode('red');boxT=bx(440);
+  S.q=[[.3,()=>grid(cellsWhere((c,r)=>(c+r)%2==0),1.1,.6)],[2.4,()=>grid(cellsWhere((c,r)=>(c+r)%2==1),1,.6)],
+   [4.4,()=>{for(let c=0;c<8;c++)grid(cellsWhere(x=>x==c),.8+c*.14,.3)}],
+   [7,()=>{const pc=Math.floor((pl.x-box.x)/(box.w/8)),pr=Math.floor((pl.y-box.y)/(box.h/3));grid(cellsWhere((c,r)=>!(c==pc&&r==pr)&&!(Math.abs(c-pc)+Math.abs(r-pr)==1&&c>pc)&&Math.random()<.7),1.1,.7)}],
+   [9,()=>{for(let c=0;c<8;c++)for(let r=0;r<3;r++)grid([[c,r]],.8+(c+r)*.16,.22)}],
+   [10.8,()=>grid(cellsWhere((c,r)=>(c+r)%2==0),.8,.5)]]},
+ tick(S,dt,t){TL(S,t)}},
+{n:'OMEGA PROTOCOL',d:25.6,say:'FINAL VERDICT. NO APPEAL.',tip:'Everything at once. Read each segment fast.',
+ init(S){S.i=-1;S.seg=[0,8,4,10,5,3,11,9];flash=.6},
+ tick(S,dt,t){const i=Math.min(7,Math.floor(t/3.2));if(i!=S.i){S.i=i;hz=[];S.sub={};flash=.45;const a=A[S.seg[i]];a.init(S.sub);centerPl();bnr={t:1.2,txt:a.n}}A[S.seg[i]].tick(S.sub,dt,t-i*3.2)}}
 ];
-const NORMAL=8;
-function pickNext(){const low=bHP/bMax<.35;nextIdx=low?(turn%2==0?NORMAL:Math.floor(rnd(0,NORMAL))):turn%NORMAL}
+const NORMAL=12,ORDER=[0,1,8,3,4,9,2,5,10,6,11,7];
+function pickNext(){const low=bHP/bMax<.35;nextIdx=low?(turn%2==0?NORMAL:ORDER[Math.floor(rnd(0,12))]):ORDER[turn%12]}
 
 // ===== flow =====
-function hurt(d,x,y){if(hitI>0||st!='attack')return;if(shield){shield=false;hitI=1;puff(x,y,12,'#9ef',100);beep(900,.15,'sine');return}
+function hurt(d,x,y){if(hitI>0||st!='attack')return;d=Math.round(d*DM[phase()]);if(shield){shield=false;hitI=1;puff(x,y,12,'#9ef',100);beep(900,.15,'sine');return}
  pHP-=d;hitI=1;shake=.25;puff(x,y,14,'#ff2a2a',120);beep(90,.15,'sawtooth',.08);
  if(pHP<=0){pHP=0;hz=[];mirror=false;well=null;boxT={...MENU};st='result';setMsg('* JUDGEMENT: DENIED.\n* Your soul shatters... then reforms. Try again.',reset)}}
-function reset(){pHP=pMax;bHP=bMax;mercy=0;turn=0;inv={pie:2,tea:3,glass:1};shield=false;hardMul=1;mulNow=1;ending=false;bossA=1;actUse={};hz=[];pt=[];mirror=false;well=null;mode('red');sub=null;sel=0;say='';boxT={...MENU};st='menu';pickNext();setMsg('* OMEGA-9, THE ARBITER, descends.\n* The air itself feels judged.')}
-function bossTurn(line){atk=A[nextIdx];atkS={};atkT=0;hz=[];pt=[];mulNow=hardMul;hardMul=1;pl.sh=0;boxT=bx(240);atk.init(atkS);centerPl();hitI=.7;st='attack';bnr={t:2.4,txt:'[ '+atk.n+' ]'};bossSay(line?line+'\n'+atk.say:atk.say,3.4)}
+function reset(){pHP=pMax;bHP=bMax;mercy=0;turn=0;lastPh=0;inv={pie:2,tea:3,glass:1};shield=false;hardMul=1;mulNow=1;ending=false;bossA=1;actUse={};hz=[];pt=[];mirror=false;well=null;mode('red');sub=null;sel=0;say='';boxT={...MENU};st='menu';pickNext();setMsg('* OMEGA-9, THE ARBITER, descends.\n* The air itself feels judged.')}
+function bossTurn(line){atk=A[nextIdx];atkS={};atkT=0;hz=[];pt=[];mulNow=hardMul*PH[phase()];hardMul=1;pl.sh=0;boxT=bx(240);atk.init(atkS);centerPl();hitI=.7;st='attack';bnr={t:2.4,txt:'[ '+atk.n+' ]'};if(HINTS[nextIdx])cap(HINTS[nextIdx],3.6);bossSay(line?line+'\n'+atk.say:atk.say,3.4)}
 function flavor(){if(mercy>=100)return '* The Arbiter lowers his rings. He is... measuring you.\n* (You can SPARE him now.)';if(bHP/bMax<.35)return '* The Arbiter burns white. The final protocol is armed.';
  return['* The rings turn. Nothing else moves.','* OMEGA-9 watches you. His eye never blinks.','* Data scrolls across the void behind him.','* A verdict is being calculated.'][turn%4]}
-function endAttack(){hz=[];mirror=false;well=null;mode('red');turn++;mulNow=1;st='menu';sub=null;boxT={...MENU};pickNext();setMsg(flavor())}
+function endAttack(){hz=[];mirror=false;well=null;mode('red');turn++;mulNow=1;st='menu';sub=null;boxT={...MENU};pickNext();const pp=phase();if(pp>lastPh){lastPh=pp;flash=.7;shake=.5;setMsg(pp==1?"* The Arbiter's rings split. His eye flares orange.\n* PHASE II: faster verdicts. Shockwaves ripple between attacks.":'* The Arbiter burns white. The sky cracks.\n* PHASE III: cannons fire between verdicts. The final protocol is armed.')}else setMsg(flavor())}
 const gain=n=>{mercy=clamp(mercy+n,0,100)};
 const ACTS=[
-['Check',()=>setMsg('* OMEGA-9 // THE ARBITER — ATK 99  DEF 99\n* Eight verdicts, then a ninth. Spears, plasma, jaws, cannons, gravity, mirrors, a black hole, seekers.\n* He respects those who endure.',()=>bossTurn())],
+['Check',()=>setMsg('* OMEGA-9 // THE ARBITER — ATK 99  DEF 99\n* Twelve verdicts, then a final protocol. He grows stronger at 70% and 35% HP.\n* He respects those who endure.',()=>bossTurn())],
 ['Analyze',()=>{const u=actUse.an=(actUse.an||0)+1;gain(u<3?10:4);setMsg('* NEXT: '+A[nextIdx].n+'\n* '+A[nextIdx].tip,()=>bossTurn('Study me. It changes nothing.'))}],
 ['Salute',()=>{const u=actUse.sa=(actUse.sa||0)+1;gain(u==1?20:8);setMsg(u==1?'* You salute the Arbiter. His eye narrows.':'* You salute again. He does not react. Almost.',()=>bossTurn(u==1?'...Acknowledged.':'Enough ceremony.'))}],
 ['Stand Firm',()=>{const u=actUse.sf=(actUse.sf||0)+1;gain(u==1?15:10);pHP=Math.min(pMax,pHP+6);setMsg('* You steady your soul.\n* HP +6.',()=>bossTurn('Resolve. Noted.'))}],
@@ -215,7 +265,7 @@ function movePlayer(dt){
  if(well){const ddx=well.x-pl.x,ddy=well.y-pl.y,d=Math.hypot(ddx,ddy)||1,f=well.s*(1.3-clamp(d/280,0,1));pl.x+=ddx/d*f*dt;pl.y+=ddy/d*f*dt}
  pl.x=clamp(pl.x,box.x+10,box.x+box.w-10);pl.y=clamp(pl.y,box.y+10,box.y+box.h-10)}
 function update(dt){
- sayT-=dt;shake-=dt;bossHit-=dt;hitI-=dt;flash-=dt;shFlash-=dt;bnr.t-=dt;slamFx.warn-=dt;slamFx.t-=dt;if(ending&&bossA>0)bossA=Math.max(0,bossA-dt*.15);
+ capT-=dt;sayT-=dt;shake-=dt;bossHit-=dt;hitI-=dt;flash-=dt;shFlash-=dt;bnr.t-=dt;slamFx.warn-=dt;slamFx.t-=dt;if(ending&&bossA>0)bossA=Math.max(0,bossA-dt*.15);
  handUp+=((st=='attack'?1:0)-handUp)*Math.min(1,dt*6);
  for(const p of pt){p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt}pt=pt.filter(p=>p.t<p.l);
  for(const k of['x','y','w','h'])box[k]+=(boxT[k]-box[k])*Math.min(1,dt*10);
@@ -226,12 +276,13 @@ function update(dt){
   if(sub==null){if(P('ArrowLeft','KeyA'))sel=(sel+3)%4;if(P('ArrowRight','KeyD'))sel=(sel+1)%4;if(P('KeyZ','Enter')){beep(500);if(sel==0){st='fight';fb={c:box.x+20}}else{sub=sel;ssel=0}}}
   else{const n=listFor().length;if(P('ArrowUp','KeyW'))ssel=(ssel+n-1)%n;if(P('ArrowDown','KeyS'))ssel=(ssel+1)%n;if(P('KeyX','Escape'))sub=null;else if(P('KeyZ','Enter')){beep(500);choose()}}}
  else if(st=='fight'){
-  fb.c+=520*dt;const mid=box.x+box.w/2,half=(box.w-40)/2;
+  fb.c+=520*(1+.2*phase())*dt;const mid=box.x+box.w/2,half=(box.w-40)/2;
   if(P('KeyZ','Enter')){const d=1-Math.abs(fb.c-mid)/half,dmg=Math.round(30+d*d*170);bHP-=dmg;bossHit=.6;gain(-20);puff(400,150,18,'#ffd84a',150);beep(160,.2,'sawtooth',.08);st='result';
    if(bHP<=0){bHP=0;endSeq(KILL)}else setMsg('* You strike for '+dmg+' damage.'+(d>.85?' CRIT!':'')+'\n* His respect for you drops.',()=>bossTurn('Violence. Predictable.'))}
   else if(fb.c>box.x+box.w-20){st='result';setMsg('* You missed.',()=>bossTurn('Pathetic.'))}}
  else if(st=='attack'){
   atkT+=dt;movePlayer(dt);atk.tick(atkS,dt*mulNow,atkT);
+  if(pl.mode=='red'&&atk!==A[NORMAL]&&phase()>0){atkS.am=(atkS.am??4.5)-dt;if(atkS.am<=0){atkS.am=phase()==2?3.2:5;if(phase()==2){const sd=rd4();cannon([box.x-36,box.x+box.w+36,bc(),bc()][sd],[bcy(),bcy(),box.y-50,box.y+box.h+46][sd],1.3,.38)}else pring('',200)}}
   for(const h of hz){if(st!='attack')break;h.t+=dt;if(h.upd)h.upd(h,dt);if(h.t>h.life)h.dead=1;
    if(!h.dead&&h.hit&&ruleOK(h))for(const p of hearts())if(h.hit(p.x,p.y,h)){hurt(h.dmg,p.x,p.y);break}}
   hz=hz.filter(h=>!h.dead);
@@ -270,7 +321,8 @@ function drawSlam(){if(slamFx.warn<=0&&slamFx.t<=0)return;const d=slamFx.dir,w=s
 function draw(){
  g.imageSmoothingEnabled=false;g.fillStyle='#000';g.fillRect(0,0,W,H);g.save();if(shake>0)g.translate(rnd(-5,5),rnd(-5,5));
  drawBg();drawBoss();speech();
- if(bnr.t>0&&st=='attack'){g.globalAlpha=clamp(bnr.t,0,1);g.fillStyle='#ffd84a';g.font='bold 26px monospace';g.textAlign='center';g.textBaseline='top';g.fillText(bnr.txt,400,262);g.textAlign='left';g.globalAlpha=1}
+ if(bnr.t>0&&st=='attack'){g.globalAlpha=clamp(bnr.t,0,1);g.fillStyle='#ffd84a';g.font='bold 26px monospace';g.textAlign='center';g.textBaseline='top';g.fillText(bnr.txt,400,236);g.textAlign='left';g.globalAlpha=1}
+ if(capT>0&&st=='attack'){g.globalAlpha=clamp(capT,0,1);g.font='bold 16px monospace';g.textAlign='center';g.textBaseline='top';const CL=lines(capTxt,560);g.fillStyle='rgba(0,0,0,.65)';g.fillRect(100,268,600,CL.length*20+8);g.fillStyle='#fff';CL.forEach((l,i)=>g.fillText(l,400,272+i*20));g.textAlign='left';g.globalAlpha=1}
  g.fillStyle='#000';g.fillRect(box.x,box.y,box.w,box.h);g.strokeStyle='#fff';g.lineWidth=4;g.strokeRect(box.x,box.y,box.w,box.h);
  g.textBaseline='top';g.font='bold 22px monospace';g.fillStyle='#fff';
  if(st=='attack'){
@@ -279,7 +331,7 @@ function draw(){
   const hs=hearts();
   if(mirror){g.strokeStyle='#ff7ad955';g.setLineDash([4,6]);g.beginPath();g.moveTo(hs[0].x,hs[0].y);g.lineTo(hs[1].x,hs[1].y);g.stroke();g.setLineDash([])}
   if(hitI<=0||Math.floor(hitI*12)%2)hs.forEach((p,i)=>heart(p.x,p.y,7,i?'#ff7ad9':pl.mode=='blue'?'#3b7bff':pl.mode=='green'?'#2f2':'#ff2a2a'));
-  if(pl.mode=='green'){const a=[-Math.PI/2,0,Math.PI/2,Math.PI][pl.sh];g.strokeStyle=shFlash>0?'#fff':'#5ff';g.lineWidth=shFlash>0?9:6;g.beginPath();g.arc(pl.x,pl.y,24,a-.75,a+.75);g.stroke()}
+  if(pl.mode=='green'){const a=[-Math.PI/2,0,Math.PI/2,Math.PI][pl.sh];for(let i=0;i<4;i++){const q=[-Math.PI/2,0,Math.PI/2,Math.PI][i];g.fillStyle=i==pl.sh?'#5ff':'#335';g.save();g.translate(pl.x+Math.cos(q)*46,pl.y+Math.sin(q)*46);g.rotate(q);g.beginPath();g.moveTo(8,0);g.lineTo(-5,-7);g.lineTo(-5,7);g.fill();g.restore()}g.strokeStyle=shFlash>0?'#fff':'#5ff';g.lineWidth=shFlash>0?9:6;g.beginPath();g.arc(pl.x,pl.y,24,a-.75,a+.75);g.stroke()}
   if(shield){g.strokeStyle='#9ef';g.lineWidth=2;g.beginPath();g.arc(pl.x,pl.y,15,0,TAU);g.stroke()}}
  else if(st=='fight'){const x0=box.x+20,x1=box.x+box.w-20,my=box.y+box.h/2;g.fillStyle='#222';g.fillRect(x0,my-28,x1-x0,56);const gr=g.createLinearGradient(x0,0,x1,0);gr.addColorStop(0,'#600');gr.addColorStop(.5,'#fd3');gr.addColorStop(1,'#600');g.fillStyle=gr;g.fillRect(x0,my-28,x1-x0,56);g.fillStyle='#fff';g.fillRect(fb.c-4,my-36,8,72)}
  else if(st=='menu'&&sub!=null){const L=listFor();L.forEach((s,i)=>{g.fillStyle='#fff';g.fillText(s,box.x+56,box.y+12+i*28);if(i==ssel)heart(box.x+34,box.y+25+i*28,7,'#ff2a2a')})}
@@ -294,7 +346,7 @@ function hud(){
  ['FIGHT','ACT','ITEM','MERCY'].forEach((n,i)=>{const x=40+i*185,on=st=='menu'&&sub==null&&sel==i;g.strokeStyle=on?'#ff0':'#f80';g.lineWidth=3;g.strokeRect(x,512,165,40);g.fillStyle=on?'#ff0':'#f80';g.fillText(n,x+52,523);if(on)heart(x+20,532,6,'#ff2a2a')});
  g.font='12px monospace';g.fillStyle='#777';g.fillText('Arrows/WASD move  |  Z/Enter confirm  |  X back  |  Hold Shift = slow',170,572)}
 function title(){g.fillStyle='#000c';g.fillRect(0,0,W,H);g.textAlign='center';g.fillStyle='#ff3b3b';g.font='bold 54px monospace';g.fillText('OMEGA-9',400,300);g.fillStyle='#fff';g.font='bold 24px monospace';g.fillText('— THE ARBITER —',400,362);
- g.font='16px monospace';g.fillStyle='#bbb';g.fillText('Nine verdicts. Nine soul-tests. No second chances.',400,415);g.fillText('Fight him... or endure until he respects you.',400,438);g.fillStyle='#fff';g.fillText('Press Z or Enter to begin',400,490);g.textAlign='left'}
+ g.font='16px monospace';g.fillStyle='#bbb';g.fillText('Twelve verdicts. Three phases. No second chances.',400,415);g.fillText('Fight him... or endure until he respects you.',400,438);g.fillStyle='#fff';g.fillText('Press Z or Enter to begin',400,490);g.textAlign='left'}
 
 let last=performance.now();
 (function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;update(dt);draw();requestAnimationFrame(loop)})(last);
