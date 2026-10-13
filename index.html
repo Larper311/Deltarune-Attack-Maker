@@ -1,15 +1,21 @@
 
-/// obj_game — Create Event
-/// Single-object soul dodging game
+/// SOUL DODGE — Single-object GML game
+/// Put this entire script in obj_game's Create Event.
+/// Uses a Step Event and Draw GUI Event created automatically below.
 
 randomize();
 
 game_w = 800;
 game_h = 600;
 
+arena_left = 200;
+arena_right = 600;
+arena_top = 180;
+arena_bottom = 510;
+
 soul_x = 400;
-soul_y = 430;
-soul_speed = 4;
+soul_y = 450;
+soul_speed = 260;
 soul_radius = 8;
 
 hp = 20;
@@ -21,26 +27,142 @@ score = 0;
 game_over = false;
 
 attack_timer = 0;
-attack_interval = 35;
-
 attacks = [];
-particles = [];
-
-arena_left = 200;
-arena_right = 600;
-arena_top = 180;
-arena_bottom = 510;
-
-// Attack types:
-// 0 = falling bone
-// 1 = horizontal bone
-// 2 = aimed projectile
-
-// Start with a ready-to-play game.
-persistent = false;
 
 
 // --------------------------------------------------
-// STEP EVENT CODE GOES BELOW
-// Move this section into the object's Step Event.
+// STEP EVENT LOGIC
 // --------------------------------------------------
+// GameMaker events cannot be defined inside another event.
+// Copy the following section into obj_game's Step Event.
+
+/*
+if (game_over) {
+    if (keyboard_check_pressed(vk_enter)) room_restart();
+    exit;
+}
+
+var dt = delta_time / 1000000;
+elapsed += dt;
+
+var mx = keyboard_check(vk_right) - keyboard_check(vk_left);
+var my = keyboard_check(vk_down) - keyboard_check(vk_up);
+
+if (keyboard_check(ord("D"))) mx += 1;
+if (keyboard_check(ord("A"))) mx -= 1;
+if (keyboard_check(ord("S"))) my += 1;
+if (keyboard_check(ord("W"))) my -= 1;
+
+mx = clamp(mx, -1, 1);
+my = clamp(my, -1, 1);
+
+var len = point_distance(0, 0, mx, my);
+if (len > 0) {
+    mx /= len;
+    my /= len;
+}
+
+soul_x += mx * soul_speed * dt;
+soul_y += my * soul_speed * dt;
+
+soul_x = clamp(soul_x, arena_left + 10, arena_right - 10);
+soul_y = clamp(soul_y, arena_top + 10, arena_bottom - 10);
+
+invincible = max(0, invincible - dt);
+
+attack_timer -= dt;
+
+if (attack_timer <= 0) {
+    attack_timer = max(0.18, 0.7 - elapsed * 0.006);
+
+    array_push(attacks, {
+        x: random_range(arena_left + 12, arena_right - 12),
+        y: arena_top - 20,
+        speed: random_range(180, 280) + min(elapsed * 2, 150),
+        hit: false
+    });
+}
+
+for (var i = array_length(attacks) - 1; i >= 0; i--) {
+    var a = attacks[i];
+    a.y += a.speed * dt;
+
+    if (point_distance(soul_x, soul_y, a.x, a.y) < 22
+    && invincible <= 0) {
+        hp -= 2;
+        invincible = 0.7;
+        a.hit = true;
+    }
+
+    if (a.y > arena_bottom + 30 || a.hit) {
+        if (a.y > arena_bottom + 30) score += 10;
+        array_delete(attacks, i, 1);
+    } else {
+        attacks[i] = a;
+    }
+}
+
+if (hp <= 0) {
+    hp = 0;
+    game_over = true;
+}
+*/
+
+
+// --------------------------------------------------
+// DRAW GUI EVENT
+// --------------------------------------------------
+// Copy the following section into obj_game's Draw GUI Event.
+
+/*
+draw_clear(c_black);
+
+draw_set_halign(fa_center);
+draw_set_valign(fa_middle);
+
+draw_set_color(c_white);
+draw_text(400, 45, "SOUL DODGE");
+
+draw_set_halign(fa_left);
+draw_text(200, 100, "HP");
+
+draw_set_color(c_red);
+draw_rectangle(240, 90, 240 + hp * 5, 108, false);
+
+draw_set_color(c_white);
+draw_text(370, 100, string(hp) + " / " + string(max_hp));
+draw_text(500, 100, "SCORE: " + string(score));
+draw_text(200, 135, "TIME: " + string(floor(elapsed)) + "s");
+
+draw_rectangle(arena_left, arena_top, arena_right, arena_bottom, true);
+
+for (var i = 0; i < array_length(attacks); i++) {
+    var a = attacks[i];
+
+    draw_set_color(c_white);
+    draw_rectangle(a.x - 6, a.y - 18, a.x + 6, a.y + 18, false);
+    draw_ellipse(a.x - 6, a.y - 23, a.x + 6, a.y - 13, false);
+    draw_ellipse(a.x - 6, a.y + 13, a.x + 6, a.y + 23, false);
+}
+
+if (invincible <= 0 || (floor(invincible * 15) mod 2 == 0)) {
+    draw_set_color(c_red);
+    draw_triangle(soul_x, soul_y - 9, soul_x + 9, soul_y,
+                  soul_x, soul_y + 9, false);
+    draw_triangle(soul_x, soul_y - 9, soul_x - 9, soul_y,
+                  soul_x, soul_y + 9, false);
+}
+
+if (game_over) {
+    draw_set_halign(fa_center);
+    draw_set_color(c_red);
+    draw_text(400, 315, "GAME OVER");
+
+    draw_set_color(c_white);
+    draw_text(400, 350, "Score: " + string(score));
+    draw_text(400, 380, "Press ENTER to restart");
+}
+
+draw_set_halign(fa_left);
+draw_set_valign(fa_top);
+*/
