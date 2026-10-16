@@ -1,168 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Infinite Dodge Simulator — SOUL Mode</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+  }
+  
+  body {
+    background: #000;
+    color: #fff;
+    font-family: 'Press Start 2P', monospace;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    image-rendering: pixelated;
+  }
+  
+  #ui {
+    width: 100%;
+    max-width: 520px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  
+  #hp-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  #hp-bar {
+    width: 120px;
+    height: 14px;
+    background: #400;
+    border: 2px solid #fff;
+    position: relative;
+  }
+  
+  #hp-fill {
+    height: 100%;
+    background: #f00;
+    width: 100%;
+    transition: width 0.1s;
+  }
+  
+  #hp-text {
+    color: #f00;
+    font-size: 10px;
+  }
+  
+  #wave-info, #score-info {
+    font-size: 10px;
+  }
+  
+  #game-container {
+    position: relative;
+    border: 4px solid #fff;
+    background: #000;
+    box-shadow: 0 0 20px rgba(255,255,255,0.15);
+  }
+  
+  canvas {
+    display: block;
+    background: #000;
+  }
+  
+  #overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    z-index: 10;
+  }
+  
+  #overlay h1 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    color: #f00;
+    text-shadow: 0 0 10px #f00;
+  }
+  
+  #overlay p {
+    font-size: 9px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    max-width: 360px;
+  }
+  
+  #overlay .controls {
+    font-size: 8px;
+    color: #aaa;
+    margin: 16px 0;
+  }
+  
+  button {
+    font-family: 'Press Start 2P', monospace;
+    background: #000;
+    color: #fff;
+    border: 3px solid #fff;
+    padding: 12px 24px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all 0.1s;
+  }
+  
+  button:hover {
+    background: #fff;
+    color: #000;
+  }
+  
+  #flavor {
+    position: absolute;
+    bottom: -32px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 8px;
+    color: #888;
+  }
+  
+  .heart {
+    color: #f00;
+  }
+</style>
+</head>
+<body>
+  <div id="ui">
+    <div id="hp-container">
+      <span>HP</span>
+      <div id="hp-bar"><div id="hp-fill"></div></div>
+      <span id="hp-text">20/20</span>
+    </div>
+    <div id="wave-info">WAVE 0</div>
+    <div id="score-info">TIME 0.0s</div>
+  </div>
+  
+  <div id="game-container">
+    <canvas id="c" width="480" height="320"></canvas>
+    <div id="overlay">
+      <h1>* INFINITE DODGE *</h1>
+      <p>You are the <span class="heart">SOUL</span>.<br>
+      Survive endless waves of attacks inspired by Undertale &amp; Deltarune.</p>
+      <p class="controls">
+        MOVE: Arrow Keys / WASD<br>
+        Blue attacks = stay still<br>
+        Orange attacks = keep moving
+      </p>
+      <button id="start-btn">BEGIN</button>
+    </div>
+    <div id="flavor">* You feel your DETERMINATION rising...</div>
+  </div>
 
-/// SOUL DODGE — Single-object GML game
-/// Put this entire script in obj_game's Create Event.
-/// Uses a Step Event and Draw GUI Event created automatically below.
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
 
-randomize();
+// Battle box (inner area)
+const BOX = { x: 90, y: 60, w: 300, h: 200 };
 
-game_w = 800;
-game_h = 600;
+// Player SOUL
+const soul = {
+  x: BOX.x + BOX.w / 2,
+  y: BOX.y + BOX.h / 2,
+  size: 8,
+  speed: 3.2,
+  vx: 0, vy: 0,
+  invuln: 0,
+  hp: 20,
+  maxHp: 20
+};
 
-arena_left = 200;
-arena_right = 600;
-arena_top = 180;
-arena_bottom = 510;
+// Game state
+let running = false;
+let wave = 0;
+let time = 0;
+let score = 0;
+let highScore = parseInt(localStorage.getItem('ut_dodge_hs') || '0');
+let bullets = [];
+let effects = []; // visual effects (warnings, blasts, etc.)
+let keys = {};
+let attackTimer = 0;
+let currentAttack = null;
+let attackPhase = 0;
+let difficulty = 1;
 
-soul_x = 400;
-soul_y = 450;
-soul_speed = 260;
-soul_radius = 8;
+// Input
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault();
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-hp = 20;
-max_hp = 20;
-invincible = 0;
+// Start / Restart
+document.getElementById('start-btn').addEventListener('click', startGame);
 
-elapsed = 0;
-score = 0;
-game_over = false;
-
-attack_timer = 0;
-attacks = [];
-
-
-// --------------------------------------------------
-// STEP EVENT LOGIC
-// --------------------------------------------------
-// GameMaker events cannot be defined inside another event.
-// Copy the following section into obj_game's Step Event.
-
-/*
-if (game_over) {
-    if (keyboard_check_pressed(vk_enter)) room_restart();
-    exit;
+function startGame() {
+  document.getElementById('overlay').style.display = 'none';
+  running = true;
+  wave = 0;
+  time = 0;
+  score = 0;
+  soul.hp = soul.maxHp;
+  soul.x = BOX.x + BOX.w / 2;
+  soul.y = BOX.y + BOX.h / 2;
+  soul.invuln = 0;
+  bullets = [];
+  effects = [];
+  difficulty = 1;
+  attackTimer = 0;
+  currentAttack = null;
+  nextWave();
+  requestAnimationFrame(loop);
 }
 
-var dt = delta_time / 1000000;
-elapsed += dt;
-
-var mx = keyboard_check(vk_right) - keyboard_check(vk_left);
-var my = keyboard_check(vk_down) - keyboard_check(vk_up);
-
-if (keyboard_check(ord("D"))) mx += 1;
-if (keyboard_check(ord("A"))) mx -= 1;
-if (keyboard_check(ord("S"))) my += 1;
-if (keyboard_check(ord("W"))) my -= 1;
-
-mx = clamp(mx, -1, 1);
-my = clamp(my, -1, 1);
-
-var len = point_distance(0, 0, mx, my);
-if (len > 0) {
-    mx /= len;
-    my /= len;
+function gameOver() {
+  running = false;
+  if (Math.floor(time) > highScore) {
+    highScore = Math.floor(time);
+    localStorage.setItem('ut_dodge_hs', highScore);
+  }
+  const ov = document.getElementById('overlay');
+  ov.style.display = 'flex';
+  ov.innerHTML = `
+    <h1>* GAME OVER *</h1>
+    <p>You survived <span style="color:#0f0">${time.toFixed(1)}s</span><br>
+    Wave reached: <span style="color:#ff0">${wave}</span><br>
+    Best time: ${highScore}s</p>
+    <p style="color:#aaa;font-size:8px;margin-top:8px">* You cannot give up just yet...</p>
+    <button id="start-btn">TRY AGAIN</button>
+  `;
+  document.getElementById('start-btn').addEventListener('click', startGame);
 }
 
-soul_x += mx * soul_speed * dt;
-soul_y += my * soul_speed * dt;
+// Utility
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function rand(a, b) { return a + Math.random() * (b - a); }
+function choose(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-soul_x = clamp(soul_x, arena_left + 10, arena_right - 10);
-soul_y = clamp(soul_y, arena_top + 10, arena_bottom - 10);
-
-invincible = max(0, invincible - dt);
-
-attack_timer -= dt;
-
-if (attack_timer <= 0) {
-    attack_timer = max(0.18, 0.7 - elapsed * 0.006);
-
-    array_push(attacks, {
-        x: random_range(arena_left + 12, arena_right - 12),
-        y: arena_top - 20,
-        speed: random_range(180, 280) + min(elapsed * 2, 150),
-        hit: false
-    });
-}
-
-for (var i = array_length(attacks) - 1; i >= 0; i--) {
-    var a = attacks[i];
-    a.y += a.speed * dt;
-
-    if (point_distance(soul_x, soul_y, a.x, a.y) < 22
-    && invincible <= 0) {
-        hp -= 2;
-        invincible = 0.7;
-        a.hit = true;
+// Bullet types
+class Bullet {
+  constructor(opts) {
+    Object.assign(this, {
+      x: 0, y: 0, vx: 0, vy: 0,
+      w: 8, h: 8,
+      type: 'white', // white, blue, orange, green
+      shape: 'circle', // circle, bone, spear, laser, fire
+      life: 9999,
+      damage: 1,
+      active: true,
+      angle: 0,
+      length: 0, // for lasers
+      warning: 0,
+      color: '#fff'
+    }, opts);
+    
+    if (this.type === 'blue') this.color = '#4af';
+    if (this.type === 'orange') this.color = '#f80';
+    if (this.type === 'green') this.color = '#0f0';
+  }
+  
+  update(dt) {
+    if (this.warning > 0) {
+      this.warning -= dt;
+      return;
     }
-
-    if (a.y > arena_bottom + 30 || a.hit) {
-        if (a.y > arena_bottom + 30) score += 10;
-        array_delete(attacks, i, 1);
-    } else {
-        attacks[i] = a;
+    this.x += this.vx * dt * 60;
+    this.y += this.vy * dt * 60;
+    this.life -= dt;
+    if (this.life <= 0) this.active = false;
+    
+    // Keep bones rotating slightly for style
+    if (this.shape === 'bone') this.angle += 0.02;
+  }
+  
+  draw(ctx) {
+    if (this.warning > 0) {
+      // Red warning indicator
+      ctx.save();
+      ctx.globalAlpha = 0.4 + Math.sin(Date.now() * 0.02) * 0.3;
+      ctx.fillStyle = '#f00';
+      if (this.shape === 'laser') {
+        ctx.fillRect(this.x - this.length/2, this.y - 4, this.length, 8);
+      } else {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.w * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      return;
     }
+    
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    ctx.fillStyle = this.color;
+    
+    if (this.shape === 'circle' || this.shape === 'fire') {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.w / 2, 0, Math.PI * 2);
+      ctx.fill();
+      if (this.shape === 'fire') {
+        ctx.fillStyle = '#fa0';
+        ctx.beginPath();
+        ctx.arc(0, -2, this.w / 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (this.shape === 'bone') {
+      // Classic bone look
+      const len = this.h;
+      const thick = this.w;
+      ctx.fillRect(-thick/2, -len/2, thick, len);
+      // Ends
+      ctx.beginPath();
+      ctx.arc(0, -len/2, thick * 0.7, 0, Math.PI * 2);
+      ctx.arc(0, len/2, thick * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (this.shape === 'spear') {
+      // Triangle spear
+      ctx.beginPath();
+      ctx.moveTo(0, -this.h/2);
+      ctx.lineTo(this.w/2, this.h/2);
+      ctx.lineTo(-this.w/2, this.h/2);
+      ctx.closePath();
+      ctx.fill();
+    } else if (this.shape === 'laser') {
+      ctx.fillRect(-this.length/2, -this.w/2, this.length, this.w);
+      // Glow
+      ctx.globalAlpha = 0.3;
+      ctx.fillRect(-this.length/2, -this.w, this.length, this.w * 2);
+    }
+    
+    ctx.restore();
+  }
+  
+  hitsSoul() {
+    if (this.warning > 0 || !this.active) return false;
+    
+    // Blue: only hurts if moving
+    if (this.type === 'blue') {
+      if (Math.abs(soul.vx) < 0.1 && Math.abs(soul.vy) < 0.1) return false;
+    }
+    // Orange: only hurts if standing still
+    if (this.type === 'orange') {
+      if (Math.abs(soul.vx) > 0.3 || Math.abs(soul.vy) > 0.3) return false;
+    }
+    
+    // Collision
+    if (this.shape === 'laser') {
+      const halfL = this.length / 2;
+      const halfW = this.w / 2 + 2;
+      return soul.x > this.x - halfL && soul.x < this.x + halfL &&
+             soul.y > this.y - halfW && soul.y < this.y + halfW;
+    }
+    
+    // Circle / bone / spear approx as circle or rect
+    const dx = Math.abs(soul.x - this.x);
+    const dy = Math.abs(soul.y - this.y);
+    const r = this.w / 2 + soul.size * 0.6;
+    
+    if (this.shape === 'bone') {
+      return dx < this.w/2 + soul.size*0.5 && dy < this.h/2 + soul.size*0.5;
+    }
+    return dx*dx + dy*dy < r*r;
+  }
 }
 
-if (hp <= 0) {
-    hp = 0;
-    game_over = true;
+// Attack patterns
+const attacks = {
+  // 1. Horizontal bone waves (Papyrus style)
+  boneWave: {
+    name: "Bone Wave",
+    duration: 4.5,
+    start() {
+      this.timer = 0;
+      this.side = Math.random() < 0.5 ? -1 : 1;
+    },
+    update(dt) {
+      this.timer += dt;
+      if (this.timer > 0.28 / Math.min(difficulty, 2.5)) {
+        this.timer = 0;
+        const gapY = BOX.y + 30 + Math.random() * (BOX.h - 60);
+        const speed = (2.8 + difficulty * 0.4) * this.side;
+        // Top bone
+        bullets.push(new Bullet({
+          x: this.side > 0 ? BOX.x - 20 : BOX.x + BOX.w + 20,
+          y: gapY - 50,
+          vx: speed, vy: 0,
+          w: 10, h: 70,
+          shape: 'bone', type: 'white',
+          life: 4
+        }));
+        // Bottom bone
+        bullets.push(new Bullet({
+          x: this.side > 0 ? BOX.x - 20 : BOX.x + BOX.w + 20,
+          y: gapY + 50,
+          vx: speed, vy: 0,
+          w: 10, h: 70,
+          shape: 'bone', type: 'white',
+          life: 4
+        }));
+      }
+    }
+  },
+  
+  // 2. Falling fireballs / pellets (Toriel / Flowey)
+  fireRain: {
+    name: "Fire Magic",
+    duration: 5,
+    start() {
+      this.timer = 0;
+    },
+    update(dt) {
+      this.timer += dt;
+      if (this.timer > 0.18 / Math.min(difficulty, 2.2)) {
+        this.timer = 0;
+        const x = BOX.x + 20 + Math.random() * (BOX.w - 40);
+        bullets.push(new Bullet({
+          x, y: BOX.y - 15,
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: 2.2 + difficulty * 0.35,
+          w: 12, h: 12,
+          shape: 'fire', type: 'white',
+          life: 5
+        }));
+      }
+    }
+  },
+  
+  // 3. Spears from sides / top (Undyne)
+  spearVolley: {
+    name: "Spear of Justice",
+    duration: 4.8,
+    start() {
+      this.timer = 0;
+      this.dir = 0;
+    },
+    update(dt) {
+      this.timer += dt;
+      if (this.timer > 0.35 / Math.min(difficulty, 2)) {
+        this.timer = 0;
+        this.dir = (this.dir + 1) % 4;
+        const dirs = [
+          {x: BOX.x + BOX.w/2, y: BOX.y - 20, vx: 0, vy: 3.5}, // top
+          {x: BOX.x + BOX.w + 20, y: BOX.y + BOX.h/2, vx: -3.5, vy: 0}, // right
+          {x: BOX.x + BOX.w/2, y: BOX.y + BOX.h + 20, vx: 0, vy: -3.5}, // bottom
+          {x: BOX.x - 20, y: BOX.y + BOX.h/2, vx: 3.5, vy: 0} // left
+        ];
+        const d = dirs[this.dir];
+        // Slight aim toward soul
+        const aimX = (soul.x - d.x) * 0.08;
+        const aimY = (soul.y - d.y) * 0.08;
+        bullets.push(new Bullet({
+          x: d.x, y: d.y,
+          vx: d.vx + aimX, vy: d.vy + aimY,
+          w: 10, h: 22,
+          shape: 'spear', type: 'white',
+          angle: Math.atan2(d.vy, d.vx) + Math.PI/2,
+          life: 4
+        }));
+      }
+    }
+  },
+  
+  // 4. Gaster Blaster style (charge + beam)
+  gasterBlaster: {
+    name: "Gaster Blaster",
+    duration: 5.5,
+    start() {
+      this.timer = 0;
+      this.shots = 0;
+      this.maxShots = 3 + Math.floor(difficulty / 2);
+    },
+    update(dt) {
+      this.timer += dt;
+      if (this.shots < this.maxShots && this.timer > 1.1) {
+        this.timer = 0;
+        this.shots++;
+        
+        // Random side
+        const side = Math.floor(Math.random() * 4);
+        let bx, by, angle, length;
+        
+        if (side === 0) { // left
+          bx = BOX.x - 40; by = BOX.y + 20 + Math.random() * (BOX.h - 40);
+          angle = 0; length = BOX.w + 80;
+        } else if (side === 1) { // right
+          bx = BOX.x + BOX.w + 40; by = BOX.y + 20 + Math.random() * (BOX.h - 40);
+          angle = Math.PI; length = BOX.w + 80;
+        } else if (side === 2) { // top
+          bx = BOX.x + 20 + Math.random() * (BOX.w - 40); by = BOX.y - 40;
+          angle = Math.PI/2; length = BOX.h + 80;
+        } else { // bottom
+          bx = BOX.x + 20 + Math.random() * (BOX.w - 40); by = BOX.y + BOX.h + 40;
+          angle = -Math.PI/2; length = BOX.h + 80;
+        }
+        
+        // Warning then laser
+        bullets.push(new Bullet({
+          x: bx + Math.cos(angle) * (length/2 - 40),
+          y: by + Math.sin(angle) * (length/2 - 40),
+          vx: 0, vy: 0,
+          w: 18, length: length,
+          shape: 'laser', type: 'white',
+          warning: 0.7,
+          life: 1.4,
+          angle: angle
+        }));
+      }
+    }
+  },
+  
+  // 5. Expanding ring of bones
+  boneRing: {
+    name: "Bone Ring",
+    duration: 4,
+    start() {
+      this.timer = 0;
+      this.rings = 0;
+    },
+    update(dt) {
+      this.timer += dt;
+      if (this.rings < 4 && this.timer > 0.9) {
+        this.timer = 0;
+        this.rings++;
+        const count = 10 + Math.floor(difficulty);
+        const cx = BOX.x + BOX.w / 2;
+        const cy = BOX.y + BOX.h / 2;
+        for (let i = 0; i < count; i++) {
+          const a = (i / count) * Math.PI * 2;
+          bullets.push(new Bullet({
+            x: cx, y: cy,
+            vx: Math.cos(a) * (1.8 + difficulty * 0.25),
+            vy: Math.sin(a) * (1.8 + difficulty * 0.25),
+            w: 8, h: 28,
+            shape: 'bone', type: 'white',
+            angle: a,
+            life: 3.5
+          }));
+        }
+      }
+    }
+  },
+  
+  // 6. Blue / Orange mix (classic color attacks)
+  colorBones: {
+    name: "Blue & Orange",
+    duration: 5.5,
+    start() {
+      this.timer = 0;
+    },
+    update(dt) {
+      this.timer += dt;
+      if (this.timer > 0.55) {
+        this.timer = 0;
+        const isBlue = Math.random() < 0.5;
+        const fromLeft = Math.random() < 0.5;
+        const y = BOX.y + 25 + Math.random() * (BOX.h - 50);
+        bullets.push(new Bullet({
+          x: fromLeft ? BOX.x - 15 : BOX.x + BOX.w + 15,
+          y,
+          vx: fromLeft ? 3.2 : -3.2,
+          vy: 0,
+          w: 12, h: 50,
+          shape: 'bone',
+          type: isBlue ? 'blue' : 'orange',
+          life: 3.5
+        }));
+      }
+    }
+  },
+  
+  // 7. Homing tears / slow seekers
+  tears: {
+    name: "Tears",
+    duration: 4.5,
+    start() {
+      this.timer = 0;
+    },
+    update(dt) {
+      this.timer += dt;
+      if (this.timer > 0.4 / Math.min(difficulty, 2)) {
+        this.timer = 0;
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const x = side > 0 ? BOX.x - 10 : BOX.x + BOX.w + 10;
+        const y = BOX.y + Math.random() * BOX.h;
+        const dx = soul.x - x;
+        const dy = soul.y - y;
+        const len = Math.hypot(dx, dy) || 1;
+        const speed = 1.6 + difficulty * 0.2;
+        bullets.push(new Bullet({
+          x, y,
+          vx: (dx / len) * speed,
+          vy: (dy / len) * speed,
+          w: 10, h: 10,
+          shape: 'circle', type: 'white',
+          life: 5
+        }));
+      }
+    }
+  },
+  
+  // 8. Cross laser pattern
+  crossLasers: {
+    name: "Cross Beams",
+    duration: 4.2,
+    start() {
+      this.timer = 0;
+      this.fired = false;
+    },
+    update(dt) {
+      this.timer += dt;
+      if (!this.fired && this.timer > 0.8) {
+        this.fired = true;
+        // Horizontal
+        bullets.push(new Bullet({
+          x: BOX.x + BOX.w/2, y: soul.y,
+          w: 14, length: BOX.w + 40,
+          shape: 'laser', type: 'white',
+          warning: 0.55, life: 1.3
+        }));
+        // Vertical
+        bullets.push(new Bullet({
+          x: soul.x, y: BOX.y + BOX.h/2,
+          w: 14, length: BOX.h + 40,
+          shape: 'laser', type: 'white',
+          warning: 0.55, life: 1.3,
+          angle: Math.PI/2
+        }));
+      }
+      // Second set
+      if (this.timer > 2.4 && this.timer < 2.5) {
+        bullets.push(new Bullet({
+          x: BOX.x + BOX.w/2, y: BOX.y + BOX.h * 0.3,
+          w: 12, length: BOX.w + 40,
+          shape: 'laser', type: 'white',
+          warning: 0.45, life: 1.1
+        }));
+        bullets.push(new Bullet({
+          x: BOX.x + BOX.w/2, y: BOX.y + BOX.h * 0.7,
+          w: 12, length: BOX.w + 40,
+          shape: 'laser', type: 'white',
+          warning: 0.45, life: 1.1
+        }));
+      }
+    }
+  },
+  
+  // 9. Falling bone columns with gaps
+  boneColumns: {
+    name: "Bone Columns",
+    duration: 5,
+    start() {
+      this.timer = 0;
+    },
+    update(dt) {
+      this.timer += dt;
+      if (this.timer > 0.7) {
+        this.timer = 0;
+        const gap = 45 + Math.random() * 30;
+        const gapY = BOX.y + 20 + Math.random() * (BOX.h - 40 - gap);
+        // Top column
+        bullets.push(new Bullet({
+          x: BOX.x + BOX.w + 15,
+          y: BOX.y + (gapY - BOX.y) / 2,
+          vx: -2.6 - difficulty * 0.3, vy: 0,
+          w: 12, h: gapY - BOX.y,
+          shape: 'bone', type: 'white',
+          life: 4
+        }));
+        // Bottom column
+        bullets.push(new Bullet({
+          x: BOX.x + BOX.w + 15,
+          y: gapY + gap + (BOX.y + BOX.h - gapY - gap) / 2,
+          vx: -2.6 - difficulty * 0.3, vy: 0,
+          w: 12, h: BOX.y + BOX.h - gapY - gap,
+          shape: 'bone', type: 'white',
+          life: 4
+        }));
+      }
+    }
+  },
+  
+  // 10. Spiral bullets
+  spiral: {
+    name: "Spiral",
+    duration: 4.5,
+    start() {
+      this.timer = 0;
+      this.angle = 0;
+    },
+    update(dt) {
+      this.timer += dt;
+      this.angle += 0.18 * Math.min(difficulty, 2.5);
+      if (this.timer > 0.12) {
+        this.timer = 0;
+        const cx = BOX.x + BOX.w / 2;
+        const cy = BOX.y + BOX.h / 2;
+        bullets.push(new Bullet({
+          x: cx, y: cy,
+          vx: Math.cos(this.angle) * 2.4,
+          vy: Math.sin(this.angle) * 2.4,
+          w: 9, h: 9,
+          shape: 'circle', type: 'white',
+          life: 3.5
+        }));
+        // Opposite
+        bullets.push(new Bullet({
+          x: cx, y: cy,
+          vx: Math.cos(this.angle + Math.PI) * 2.4,
+          vy: Math.sin(this.angle + Math.PI) * 2.4,
+          w: 9, h: 9,
+          shape: 'circle', type: 'white',
+          life: 3.5
+        }));
+      }
+    }
+  }
+};
+
+const attackList = Object.keys(attacks);
+
+function nextWave() {
+  wave++;
+  difficulty = 1 + wave * 0.12;
+  bullets = bullets.filter(b => b.active); // keep residual
+  attackTimer = 0;
+  
+  // Pick random attack, avoid immediate repeat
+  let name;
+  do {
+    name = choose(attackList);
+  } while (name === currentAttack && attackList.length > 1);
+  
+  currentAttack = name;
+  const atk = attacks[name];
+  atk.start();
+  
+  // Flavor text
+  const flavors = [
+    "* The air grows tense...",
+    "* You feel your DETERMINATION rising...",
+    "* Something approaches...",
+    "* Keep moving. Keep dodging.",
+    "* Don't give up!",
+    "* The SOUL shines brighter.",
+    "* Another wave begins..."
+  ];
+  document.getElementById('flavor').textContent = choose(flavors);
+  document.getElementById('wave-info').textContent = `WAVE ${wave}`;
 }
-*/
 
-
-// --------------------------------------------------
-// DRAW GUI EVENT
-// --------------------------------------------------
-// Copy the following section into obj_game's Draw GUI Event.
-
-/*
-draw_clear(c_black);
-
-draw_set_halign(fa_center);
-draw_set_valign(fa_middle);
-
-draw_set_color(c_white);
-draw_text(400, 45, "SOUL DODGE");
-
-draw_set_halign(fa_left);
-draw_text(200, 100, "HP");
-
-draw_set_color(c_red);
-draw_rectangle(240, 90, 240 + hp * 5, 108, false);
-
-draw_set_color(c_white);
-draw_text(370, 100, string(hp) + " / " + string(max_hp));
-draw_text(500, 100, "SCORE: " + string(score));
-draw_text(200, 135, "TIME: " + string(floor(elapsed)) + "s");
-
-draw_rectangle(arena_left, arena_top, arena_right, arena_bottom, true);
-
-for (var i = 0; i < array_length(attacks); i++) {
-    var a = attacks[i];
-
-    draw_set_color(c_white);
-    draw_rectangle(a.x - 6, a.y - 18, a.x + 6, a.y + 18, false);
-    draw_ellipse(a.x - 6, a.y - 23, a.x + 6, a.y - 13, false);
-    draw_ellipse(a.x - 6, a.y + 13, a.x + 6, a.y + 23, false);
+function updateSoul(dt) {
+  let dx = 0, dy = 0;
+  if (keys['arrowleft'] || keys['a']) dx -= 1;
+  if (keys['arrowright'] || keys['d']) dx += 1;
+  if (keys['arrowup'] || keys['w']) dy -= 1;
+  if (keys['arrowdown'] || keys['s']) dy += 1;
+  
+  if (dx !== 0 && dy !== 0) {
+    dx *= 0.707;
+    dy *= 0.707;
+  }
+  
+  soul.vx = dx * soul.speed;
+  soul.vy = dy * soul.speed;
+  
+  soul.x += soul.vx * dt * 60;
+  soul.y += soul.vy * dt * 60;
+  
+  // Clamp inside box
+  soul.x = clamp(soul.x, BOX.x + soul.size, BOX.x + BOX.w - soul.size);
+  soul.y = clamp(soul.y, BOX.y + soul.size, BOX.y + BOX.h - soul.size);
+  
+  if (soul.invuln > 0) soul.invuln -= dt;
 }
 
-if (invincible <= 0 || (floor(invincible * 15) mod 2 == 0)) {
-    draw_set_color(c_red);
-    draw_triangle(soul_x, soul_y - 9, soul_x + 9, soul_y,
-                  soul_x, soul_y + 9, false);
-    draw_triangle(soul_x, soul_y - 9, soul_x - 9, soul_y,
-                  soul_x, soul_y + 9, false);
+function updateBullets(dt) {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.update(dt);
+    
+    // Off-screen cleanup
+    if (b.x < -80 || b.x > W + 80 || b.y < -80 || b.y > H + 80) {
+      b.active = false;
+    }
+    
+    if (!b.active) {
+      bullets.splice(i, 1);
+      continue;
+    }
+    
+    // Collision
+    if (soul.invuln <= 0 && b.hitsSoul()) {
+      soul.hp -= b.damage;
+      soul.invuln = 1.1; // invuln frames
+      // Flash effect
+      effects.push({ type: 'hit', x: soul.x, y: soul.y, life: 0.3 });
+      
+      if (soul.hp <= 0) {
+        soul.hp = 0;
+        gameOver();
+      }
+    }
+  }
 }
 
-if (game_over) {
-    draw_set_halign(fa_center);
-    draw_set_color(c_red);
-    draw_text(400, 315, "GAME OVER");
-
-    draw_set_color(c_white);
-    draw_text(400, 350, "Score: " + string(score));
-    draw_text(400, 380, "Press ENTER to restart");
+function updateAttack(dt) {
+  if (!currentAttack) return;
+  const atk = attacks[currentAttack];
+  atk.update(dt);
+  attackTimer += dt;
+  
+  if (attackTimer >= atk.duration) {
+    nextWave();
+  }
 }
 
-draw_set_halign(fa_left);
-draw_set_valign(fa_top);
-*/
+function drawSoul() {
+  ctx.save();
+  // Invuln blink
+  if (soul.invuln > 0 && Math.floor(soul.invuln * 12) % 2 === 0) {
+    ctx.globalAlpha = 0.4;
+  }
+  
+  // Draw heart
+  const s = soul.size;
+  ctx.fillStyle = '#f00';
+  ctx.beginPath();
+  ctx.moveTo(soul.x, soul.y + s * 0.7);
+  ctx.bezierCurveTo(soul.x, soul.y + s * 0.3, soul.x - s, soul.y - s * 0.3, soul.x - s, soul.y - s * 0.1);
+  ctx.bezierCurveTo(soul.x - s, soul.y - s * 0.6, soul.x, soul.y - s * 0.5, soul.x, soul.y - s * 0.15);
+  ctx.bezierCurveTo(soul.x, soul.y - s * 0.5, soul.x + s, soul.y - s * 0.6, soul.x + s, soul.y - s * 0.1);
+  ctx.bezierCurveTo(soul.x + s, soul.y - s * 0.3, soul.x, soul.y + s * 0.3, soul.x, soul.y + s * 0.7);
+  ctx.fill();
+  
+  // Inner shine
+  ctx.fillStyle = '#fcc';
+  ctx.beginPath();
+  ctx.arc(soul.x - 2, soul.y - 2, 2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.restore();
+}
+
+function drawBox() {
+  // Outer glow
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(BOX.x - 2, BOX.y - 2, BOX.w + 4, BOX.h + 4);
+  
+  // Inner fill slight
+  ctx.fillStyle = 'rgba(20,20,30,0.4)';
+  ctx.fillRect(BOX.x, BOX.y, BOX.w, BOX.h);
+}
+
+function drawUI() {
+  document.getElementById('hp-fill').style.width = (soul.hp / soul.maxHp * 100) + '%';
+  document.getElementById('hp-text').textContent = `${Math.max(0, Math.ceil(soul.hp))}/${soul.maxHp}`;
+  document.getElementById('score-info').textContent = `TIME ${time.toFixed(1)}s`;
+}
+
+function loop(timestamp) {
+  if (!running) return;
+  
+  const dt = Math.min((timestamp - (loop.last || timestamp)) / 1000, 0.05);
+  loop.last = timestamp;
+  
+  time += dt;
+  score = Math.floor(time);
+  
+  // Clear
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  
+  drawBox();
+  
+  updateSoul(dt);
+  updateAttack(dt);
+  updateBullets(dt);
+  
+  // Draw bullets
+  for (const b of bullets) b.draw(ctx);
+  
+  // Hit effects
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const e = effects[i];
+    e.life -= dt;
+    if (e.life <= 0) {
+      effects.splice(i, 1);
+      continue;
+    }
+    ctx.save();
+    ctx.globalAlpha = e.life * 2;
+    ctx.strokeStyle = '#f00';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, 12 + (0.3 - e.life) * 40, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  
+  drawSoul();
+  drawUI();
+  
+  // Attack name indicator
+  if (currentAttack && attackTimer < 1.2) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - attackTimer);
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText(attacks[currentAttack].name.toUpperCase(), W / 2, 30);
+    ctx.restore();
+  }
+  
+  requestAnimationFrame(loop);
+}
+
+// Initial draw of empty box
+ctx.fillStyle = '#000';
+ctx.fillRect(0, 0, W, H);
+drawBox();
+</script>
+</body>
+</html>
